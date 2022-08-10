@@ -1,0 +1,11 @@
+{
+    "api": {
+        "base": "https://api.snyk.io"
+    },
+    "app": {
+        "base": "https://app.snyk.io"
+    },
+    "authorizationUrl": "/oauth2/authorize",
+    "tokenUrl": "/oauth2/token",
+    "port": 3000
+}
