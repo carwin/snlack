@@ -4,10 +4,17 @@ import config from 'config';
 import fs from 'fs';
 import { join } from 'path';
 import { envCheck, Severity } from 'envar-check';
+import { ActionConstraints, App, Context, LogLevel, HomeView } from '@slack/bolt';
+
+import passport from 'passport';
+import { VerifyCallback } from 'passport-oauth2';
+import SnykOAuth2Strategy, { ProfileFunc } from '@snyk/passport-snyk-oauth2';
+
+import { getOAuth2 } from './lib/utils/OAuth2Strategy';
 import './lib/utils/env';
+import { createHome } from './appHome';
 import { Envars, Config } from './lib/types';
-import { App, LogLevel } from '@slack/bolt';
-import { AuthController } from './lib/controllers/auth';
+import { AuthController, HomeController } from './lib/controllers/auth';
 
 export const SNYK_API_BASE = config.get(Config.SnykApiBase);
 export const SNYK_APP_BASE = config.get(Config.SnykAppBase);
@@ -17,52 +24,67 @@ console.log('Slack Signing Secret: ', process.env.SLACK_SIGNING_SECRET);
 
 
 
+//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//
+//
+//
+//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+// Bolt app client configuration
+// -----------------------------
+// - Bolt’s client is an instance of WebClient from the Node Slack SDK
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  // processBeforeResponse: true,
+  developerMode: true,
+  extendedErrorHandler: true,
+  // raise_error_for_unhandled_request: true,
   customRoutes: [
-    AuthController
+    AuthController,
+    HomeController
   ],
   logLevel: LogLevel.DEBUG,
   deferInitialization: true,
 });
 
-  // /**
-  //  * Check all the required environmental variables are set or throw an error
-  //  */
-  // private checkEnvVars() {
-  //   envCheck(
-  //     [Envars.ClientId, Envars.ClientSecret, Envars.RedirectUri, Envars.Scopes, Envars.EncryptionSecret],
-  //     Severity.FATAL,
-  //   );
-  // }
 
-  /**
-   * Initialize the database file to be used by our DB
-   */
-  const initDatabaseFile = () => {
-    try {
-      const dbFolder = join(__dirname, '../db');
-      dbPath = join(dbFolder, 'db.json');
-      console.log(`
-            Using db: ${dbPath}`);
+// Initialize the database file to be used by our DB
+// ------------------------------------------------------------------------------
+const initDatabaseFile = () => {
+  try {
+    const dbFolder = join(__dirname, '../db');
+    dbPath = join(dbFolder, 'db.json');
+    console.log(`
+Using db: ${dbPath}`);
 
-      if (!fs.existsSync(dbPath)) {
-        if (!fs.existsSync(dbFolder)) {
-          fs.mkdirSync(dbFolder);
-        }
+    if (!fs.existsSync(dbPath)) {
+      if (!fs.existsSync(dbFolder)) {
+        fs.mkdirSync(dbFolder);
       }
-    } catch (error) {
-      console.error(error);
     }
+  } catch (error) {
+    console.error(error);
   }
+}
 
+// Snyk Auth middleware
+// ------------------------------------------------------------------------------
+// Global middleware to check whether the Snyk App has been authorized / bearer
+// token is valid / etc.
+const snykAuthCheck = async (args: {context: Context }) => {
+  args.context.snykAuthorized = false;
+}
 
-app.use(async ({ next }) => {
+app.use(async ({ context, next }) => {
+  snykAuthCheck({context});
   await next();
-});
+})
 
-// Listens to incoming messages that contain "hello"
+
+// Sample trigger phrase listener
+// ------------------------------------------------------------------------------
+//  - Listens to incoming messages that contain "hello"
 app.message('hello', async ({ message, say }) => {
   console.log('I saw a message');
   // Filter out message events with subtypes (see https://api.slack.com/events/message)
@@ -93,57 +115,45 @@ app.message('hello', async ({ message, say }) => {
 
 app.event('app_home_opened', async ({ event, client, context }) => {
   try {
+    // context.snykAuthorized = typeof context.snykAuthorized !== 'undefined' ? true : false;
+    const homeView :HomeView = await createHome({user: event.user});
     const result = await client.views.publish({
       user_id: event.user,
-      view: {
-        type: 'home',
-        callback_id: 'home_view',
-        blocks: [
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": "Snyk Authentication"
-            }
-          },
-          {
-            "type": "divider",
-          },
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": "Before you can access your Snyk data, you'll need to authorize using OAuth2."
-            }
-          },
-          {
-            "type": "actions",
-            "elements": [
-              {
-                "type": "button",
-                "text": {
-                  "type": "plain_text",
-                  "text": "Authenticate with Snyk"
-                },
-                "url": "https://d14c-47-213-163-190.ngrok.io/auth",
-              }
-            ]
-          }
-        ]
-      }
-    })
-  } catch (error) {
+      view: homeView
+    });
+   } catch (error) {
     console.error(error);
   }
 });
 
-app.action('button_click', async ({ body, ack, say }) => {
-  // Acknowledge the action
+// Set up the listener for the Home's authorize button.
+// ------------------------------------------------------------------------------
+// - global middleware needs to determine whether we've authed with Snyk so that
+//   context is available to the listener.
+const AuthButtonConstraints :ActionConstraints = {
+  block_id: 'homeblock1',
+  action_id: 'auth_snyk',
+  type: 'block_actions',
+};
+
+app.action(AuthButtonConstraints, async ({ body, context, ack }) => {
   await ack();
-  await say(`<@${body.user.id}> clicked the button`);
+  console.log('these are the constraints!');
+  console.log('body: ', body);
+  console.log('------------\nSnyk authorization status: ', context.snykAuthorized, '\n------------');
+
+  if (context.snykAuthorized === false) {
+    // Start authorizing
+  } else {
+    // Swap the auth button for a nice "You're all set" type of message
+  }
+
+
 });
 
 
+// Initialize the Bolt app.
+// ------------------------
 (async () => {
   try {
     envCheck(
@@ -159,8 +169,6 @@ app.action('button_click', async ({ body, ack, say }) => {
     console.log('There was an error during initialization:', error);
     process.exit(1);
   }
-    // Start your app
-
   console.log(`⚡️ Bolt app is running on port ${process.env.PORT}`);
 })();
 
