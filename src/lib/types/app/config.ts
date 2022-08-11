@@ -6,4 +6,5 @@ export const enum Config {
   Port = 'port',
   SlackBotToken = 'slackBotToken',
   SlackSigningSecret = 'slackSigningSecret',
+  SlackSocketToken = 'slackSocketToken',
 }
