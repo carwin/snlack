@@ -1,6 +1,6 @@
-import { readFromDb } from '../../utils/db';
+import { readFromDb } from '../../utils/app';
 import { callSnykApi } from '../../utils/snyk/api';
-import { EncryptDecrypt } from '../../utils/encrypt-decrypt';
+import { EncryptDecrypt } from '../../utils/snyk';
 import { SnykAPIVersion, AuthData, Envars } from '../../types';
 
 /**

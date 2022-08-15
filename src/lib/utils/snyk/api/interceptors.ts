@@ -1,12 +1,11 @@
 import type { AxiosError, AxiosRequestConfig } from 'axios';
 import { AuthData, Envars } from '../../../types';
 import { DateTime } from 'luxon'; // A library for dealing with dates and times in js.
-import { readFromDb } from '../../db';
+import { readFromDb, updateDb } from '../../app/db';
 import { mostRecent } from '../../../controllers/projects/projectsHandlers';
-import { EncryptDecrypt } from '../../encrypt-decrypt';
+import { EncryptDecrypt } from '../encrypt-decrypt';
 import { refreshAuthToken } from '../apiRequests';
 // import { refreshAuthToken } from '../apiRequests';
-import { updateDb } from '../../db';
 import axios from 'axios';
 
 /**

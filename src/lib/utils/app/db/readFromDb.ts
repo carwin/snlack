@@ -1,6 +1,6 @@
 import { Low, JSONFile } from 'lowdb';
-import { DB } from '../../types';
-import { dbPath } from '../../../app';
+import { DB } from '../../../types';
+import { dbPath } from '../../../../app';
 
 /**
  * Read data from DB, you could use any database of your

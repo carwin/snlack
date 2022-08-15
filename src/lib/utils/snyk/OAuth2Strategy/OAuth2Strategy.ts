@@ -1,16 +1,16 @@
 import type { Request } from 'express';
 import { VerifyCallback } from 'passport-oauth2';
 import SnykOAuth2Strategy, { ProfileFunc } from '@snyk/passport-snyk-oauth2';
-import { writeToDb } from '../db';
+import { writeToDb } from '../../app/db';
 import { EncryptDecrypt } from '../encrypt-decrypt';
-import { SnykAPIVersion, AuthData, Config, Envars } from '../../types';
-import { SNYK_API_BASE, SNYK_APP_BASE } from '../../../app';
-import { getAppOrgs } from '../snyk/apiRequests';
+import { SnykAPIVersion, AuthData, Config, Envars } from '../../../types';
+import { SNYK_API_BASE, SNYK_APP_BASE } from '../../../../app';
+import { getAppOrgs } from '../apiRequests';
 import { v4 as uuid4 } from 'uuid';
 import config from 'config';
 import jwt_decode from 'jwt-decode';
 import { AxiosResponse } from 'axios';
-import { callSnykApi } from '../snyk/api';
+import { callSnykApi } from '../api';
 
 type Params = {
   expires_in: number;
@@ -51,6 +51,8 @@ export function getOAuth2(): SnykOAuth2Strategy {
   const callbackURL = process.env[Envars.SnykRedirectUri] as string;
   const scope = process.env[Envars.SnykScopes] as string;
   const nonce = uuid4();
+  console.log('Token URL: ', Config.SnykTokenURL);
+
   /**
    * We highly encourage you to use the new rest endpoints to gather any
    * information for profile management, but for demo purposes we are
@@ -64,6 +66,7 @@ export function getOAuth2(): SnykOAuth2Strategy {
   const profileFunc: ProfileFunc = function (accessToken: string) {
     return callSnykApi('bearer', accessToken, SnykAPIVersion.V1).get('/user/me');
   };
+
 
   // Note*: the value of version being manually added
   return new SnykOAuth2Strategy(
@@ -103,10 +106,8 @@ export function getOAuth2(): SnykOAuth2Strategy {
          * as the profile functions as the auth token for Snyk Apps
          * are managed on the Snyk org level
          */
-        console.log('access token', access_token);
         const { orgs } = await getAppOrgs(token_type, access_token);
         const ed = new EncryptDecrypt(process.env[Envars.SnykEncryptionSecret] as string);
-        // console.log('decode', ed.decryptString(access_token));
         await writeToDb({
           date: new Date(),
           userId,
@@ -125,5 +126,3 @@ export function getOAuth2(): SnykOAuth2Strategy {
     },
   );
 }
-
-// Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjNlMTFjNTY4IiwidHlwIjoiSldUIn0.eyJhdWQiOlsiaHR0cHM6Ly9zbnlrIl0sImF6cCI6IjZhNDY0ZmIwLWU5NTUtNGJkNC1hNTdmLTk3MjcxZGU5NzQzNSIsImV4cCI6MTY1ODc4NTIzNCwiaWF0IjoxNjU4NzgxNjMzLCJpc3MiOiJodHRwczovL2FwcHMuc255ay5pbyIsImp0aSI6IjI3NzYyZjk3LWMzMTMtNGQzMC1iYWYzLWFlNTZjMmJkZTY3NyIsIm5vbmNlIjoiMTA5Y2M1NjItZDg5MS00ZDNkLWEyZTUtODRmY2M2YzdkOGFhIiwic2NwIjpbIm9yZy5yZWFkIiwib3JnLnByb2plY3QucmVhZCJdLCJzdWIiOiJzbnlrLWFwcHN8NzNiNzFjODMtN2ExZS00OTEyLWJiYzktNjZhYjY5YmZkZTA5IiwidXNyIjoiZDA3ZWZmZGEtNWM0Yy00MTc4LTgwYmMtMzU5Y2QzM2EwOGNkIn0.lso9O9Ybp0iOUpQ9FKcx6dsgS1wxQwreXaR_6bmzrSWFcP2NCAsey0Nwuz4bOvIVIBxYQQ_IN67z8TJzdDXK0hSX2PZsVnfxBMsy782FUJIBCcT6Qftxx_5cXadECyjNhq5eNEpnmlTG3zqK9j0MY-fmBuJIjUgKPknz9HTzXvPv7BAV3yD3ZJyQWT-mlF3v-xAfwN91fkyGiCqhV813MnzvUqkBhZN5v5dBijzVNgSjDpMBSpIOEzPZ19SJuugEDMWjO6K23yxYCJ8cgntjkVogG0gO7zJRh5YC4oi1Cye0Lkog52iTWsTXrrmqNyg37F95czdBgzo-rgjt046Ogw

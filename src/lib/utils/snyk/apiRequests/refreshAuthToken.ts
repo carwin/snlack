@@ -1,7 +1,6 @@
 import axios from 'axios';
 import qs from 'qs';
-import { GrantType } from '../../../types/grantType';
-import { AuthData, Config, Envars } from '../../../types';
+import { GrantType, AuthData, Config, Envars } from '../../../types';
 import { SNYK_API_BASE } from '../../../../app';
 import config from 'config';
 

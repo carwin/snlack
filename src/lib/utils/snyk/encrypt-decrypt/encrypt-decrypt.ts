@@ -1,5 +1,5 @@
 import Cryptr from 'cryptr';
-import { Envars } from '../../types';
+import { Envars } from '../../../types';
 
 /**
  * Small class used to encrypt data with an encryption secret

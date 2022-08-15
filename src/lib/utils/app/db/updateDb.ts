@@ -1,6 +1,6 @@
-import { dbPath } from '../../../app';
-import { AuthData, DB } from '../../types';
-import { Low, JSONFile } from 'lowdb';
+import { dbPath } from '../../../../app';
+import { AuthData, DB } from '../../../types';
+import { Low, JSONFile } from 'lowdb'; // @TODO switch from this
 /**
  * Function used to update the installs stored in the database
  * @param {AuthData} oldData Old data that needs updation

@@ -1,4 +1,4 @@
-import { Org } from './models';
+import { Org } from '../snyk/models';
 
 export interface DB {
   installs: AuthData[];
