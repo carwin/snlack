@@ -18,8 +18,9 @@ export async function readFromDb(): Promise<DB> {
 /**
  * @returns DB instance of lowdb
  */
+// @TODO - Drop snykAppInstalls table, favor users.
 function buildNewDb(): DB {
-  return { snykAppInstalls: [], slackAppInstalls: [] };
+  return { users: [], snykAppInstalls: [], slackAppInstalls: [] };
 }
 
 /**
@@ -212,3 +213,15 @@ export const getDbRecordByKey: SnlackRecordQuery = async ({recordType, queryKey,
 //   return data;
 
 // }
+
+/**
+ *
+ * @param {AuthData[]} installs get most recent install from list of installs
+ * @returns the latest install or void
+ */
+export function mostRecentSnykInstall(installs: SnykAuthData[]): SnykAuthData | void {
+  if (installs) {
+    return installs[installs.length - 1];
+  }
+  return;
+}
