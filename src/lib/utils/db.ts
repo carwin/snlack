@@ -1,42 +1,6 @@
-import { Low, JSONFile } from 'lowdb';
+import { JSONFile, Low } from 'lowdb';
 import { dbPath } from '../../app';
-import { AuthorizeResult, InstallationQuery, Installation } from '@slack/oauth';
-// import { AuthData } from '../../../types';
-// import { readFromDb } from './readFromDb';
-
-export interface DB {
-  [index: string]: SnykAuthData[] | SlackInstallData[];
-  snykAppInstalls: SnykAuthData[];
-  slackAppInstalls: SlackInstallData[];
-}
-
-export interface SnykOrg {
-  id: string;
-  name: string;
-}
-
-export interface SnykAuthData {
-  [index: string]: string | Date | SnykOrg[] | number;
-  date: Date;
-  snykUserId: string;
-  slackUserId: string;
-  orgs: SnykOrg[];
-  access_token: string;
-  expires_in: 3600;
-  scope: string;
-  token_type: string;
-  nonce: string;
-  refresh_token: string;
-};
-
-export interface SlackInstallData {
-  [index: string]: string | Date | {} | null;
-  date: Date;
-  installation: {};
-  enterpriseId: string | null; // @TODO
-  teamId: string | null;
-  userId: string | null;
-}
+import { DB, SnykAuthData, SlackInstallData } from '../../types';
 
 /**
  * Read data from DB, you could use any database of your
@@ -58,7 +22,6 @@ function buildNewDb(): DB {
   return { snykAppInstalls: [], slackAppInstalls: [] };
 }
 
-
 /**
  * Function used to write to database(JSON) file
  * in this case
@@ -66,6 +29,9 @@ function buildNewDb(): DB {
  * @param {SlackInstallData} Slack related data about the current installation
  */
 export const writeToDb = async (snykAuthData?: SnykAuthData | null, slackInstallData?: SlackInstallData | null): Promise<void> => {
+  console.log('writeToDb triggered');
+  console.log('snykAuthData: ', snykAuthData);
+  console.log('slackInstallData: ', slackInstallData);
   const existingData = await readFromDb();
   if (snykAuthData) existingData.snykAppInstalls.push(snykAuthData);
   if (slackInstallData) existingData.slackAppInstalls.push(slackInstallData);
@@ -86,7 +52,7 @@ export const writeToDb = async (snykAuthData?: SnykAuthData | null, slackInstall
  * @returns {Boolean} True is db update was success, false otherwise
  */
 // const updateDb = (oldSnykData?: SnykAuthData, oldSlackData?: SlackInstallData, newSnykData?: SnykAuthData, newSlackData?: SlackInstallData) => Promise<boolean> {
-const updateDb = async (recordType: 'snykAuth' | 'slackInstall', oldData: SnykAuthData | SlackInstallData, newData: SnykAuthData | SlackInstallData): Promise<boolean> => {
+export const updateDb = async (recordType: 'snykAuth' | 'slackInstall', oldData: SnykAuthData | SlackInstallData, newData: SnykAuthData | SlackInstallData): Promise<boolean> => {
   const adapter = new JSONFile<DB>(dbPath);
   const db = new Low<DB>(adapter);
   await db.read();
@@ -150,38 +116,99 @@ export const lookupDbRecord = async (recordType: 'snykAuth' | 'slackInstall', lo
   }
 }
 
-// @TODO
-// This is part of some work I was doing with a custom installationStore for the InstallProvider.
-// It never worked quite right.
-export const slackDbQueryAsAuthorizedResult = async (installQuery: any) => {
+// Usage ideas:
+//
+// - getDbRecordByKey({type: 'slack', teamId, 'abcd1234'});
+// - getDbRecordByKey('slack', 'teamId', 'abcd1234');
+// - getSlackRecordByTeam('abcd1234');
+// - getSlackRecordByEnterprise('hjkl4321');
+
+interface SnlackRecordQueryArgs {
+  recordType: 'snyk' | 'slack';
+  queryKey: string;
+  queryVal: string | number;
+}
+
+interface SnlackRecordQuery {
+  ({}: SnlackRecordQueryArgs): Promise<any> | null;
+}
+
+export const getDbRecordByKey: SnlackRecordQuery = async ({recordType, queryKey, queryVal}): Promise<any> => {
+  console.log(`Attempting to retrieve DB record by key: ${queryKey} and value: ${queryVal}`);
+  let recordSet: SnykAuthData[] | SlackInstallData[];
+
   const adapter = new JSONFile<DB>(dbPath);
   const db = new Low<DB>(adapter);
   await db.read();
   if (db.data == null) {
-    throw new Error('Database had no data, exiting.');
+    console.log('DB data was null.');
+    return false;
   }
 
-  let data: any = false;
+  switch (recordType) {
+    case 'snyk':
+      console.log(`Getting a Snyk record from the DB by looking for ${queryKey}: ${queryVal}`);
+      recordSet = db.data.snykAppInstalls;
+      break;
+    case 'slack':
+      console.log(`Getting a Slack record from the DB by looking for ${queryKey}: ${queryVal}`);
+      recordSet = db.data.slackAppInstalls;
+      break;
+    default:
+      recordSet = db.data.slackAppInstalls;
+  }
 
-  const recordSet: SlackInstallData[] = db.data.slackAppInstalls;
+  let result: any = null;
 
-  recordSet.map((record: SlackInstallData) => {
-    if (installQuery.teamId === record.teamId || (installQuery.isEnterpriseInstall && installQuery.enterpriseId !== false)) {
-      data = {
-        // @ts-ignore
-        botToken: record.installation.botToken,
-        // @ts-ignore
-        userToken: record.installation.userToken,
-        // @ts-ignore
-        botId: record.installation.botId,
-        // @ts-ignore
-        botUserId: record.installation.botUserId,
-        teamId: record.teamId,
-        enterpriseId: record.enterpriseId,
-      }
+  console.log('Looping records...');
+  recordSet.map((record) => {
+    // const searchDepth: {} = recordType === 'slack' ? record.installation : record;
+   if (queryKey in record) {
+      result = record[queryKey] === queryVal ? 'installation' in record ? record.installation : record : null;
     }
-  })
 
-  return data;
+  });
 
-}
+  if (result === null) {
+    console.log(`There were no records found in our data for ${queryKey} of ${queryVal}`)
+  }
+
+  return result;
+
+};
+
+// @TODO
+// This is part of some work I was doing with a custom installationStore for the InstallProvider.
+// It never worked quite right.
+// export const slackDbQueryAsAuthorizedResult = async (installQuery: any) => {
+//   const adapter = new JSONFile<DB>(dbPath);
+//   const db = new Low<DB>(adapter);
+//   await db.read();
+//   if (db.data == null) {
+//     throw new Error('Database had no data, exiting.');
+//   }
+
+//   let data: any = false;
+
+//   const recordSet: SlackInstallData[] = db.data.slackAppInstalls;
+
+//   recordSet.map((record: SlackInstallData) => {
+//     if (installQuery.teamId === record.teamId || (installQuery.isEnterpriseInstall && installQuery.enterpriseId !== false)) {
+//       data = {
+//         // @ts-ignore
+//         botToken: record.installation.botToken,
+//         // @ts-ignore
+//         userToken: record.installation.userToken,
+//         // @ts-ignore
+//         botId: record.installation.botId,
+//         // @ts-ignore
+//         botUserId: record.installation.botUserId,
+//         teamId: record.teamId,
+//         enterpriseId: record.enterpriseId,
+//       }
+//     }
+//   })
+
+//   return data;
+
+// }
