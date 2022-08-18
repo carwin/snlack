@@ -1,5 +1,6 @@
 .env
 .log/
 dist/
+db/
 node_modules/
 package-lock.json
