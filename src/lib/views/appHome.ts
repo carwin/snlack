@@ -51,7 +51,7 @@ export class SlackHomeView implements HomeView {
       // something like... db.push(`/${user}/data[]`, data, true);
     }
 
-    const userView = await this.updateView(false);
+    const userView = this.updateView(false);
 
     return {
       user_id: this.user,
@@ -99,7 +99,8 @@ export class SlackHomeView implements HomeView {
               emoji: true
             },
             value: `${user}`,
-            // url: 'http://localhost:3000/snyk/preauth',
+            url: 'http://localhost:3000/snyk/preauth',
+            // url: `http://localhost:3000/snyk/auth?suid=${user}`,
             action_id: 'auth_snyk'
           }
         ]
