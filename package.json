@@ -8,6 +8,7 @@
     "build:watch": "tsc -w -p .",
     "clean": "rimraf ./dist",
     "format": "prettier --write 'src/**/*.ts'",
+    "ts:exports:glob": "./scripts/exportGlob.sh actions controllers exceptions middleware utils views types",
     "start": "npm run build && node dist/app.js",
     "start2": "npm run build && node dist/app2.js"
   },

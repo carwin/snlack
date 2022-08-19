@@ -1,7 +1,7 @@
 // Handy reference:
 //  -
 
-import { App as Slack, ExpressReceiver, LogLevel } from '@slack/bolt';
+import { App as Slack, ExpressReceiver, FileInstallationStore, LogLevel } from '@slack/bolt';
 import * as dotenv from 'dotenv';
 import type { NextFunction, Request, Response } from 'express';
 import express from 'express';
@@ -9,15 +9,18 @@ import expressSession from 'express-session';
 import * as fs from 'fs';
 import passport from 'passport';
 import path, { join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import * as db from './lib/utils/db';
 import { SlackInstallData } from './types';
-import {v4 as uuidv4} from 'uuid';
 
 //local Imports
 import { actionAuthSnyk } from './lib/actions/authSnyk';
 import { eventAppHomeOpened } from './lib/events/apphome/opened';
-import { redirectError } from './lib/middleware/redirectError';
 import { getSnykOAuth2 } from './lib/utils/snykOAuth2Strategy';
+import { SnykAuthCallbackController } from './lib/controllers';
+import { Controller } from './types';
+import { SnykAuthController } from './lib/controllers';
+import { redirectError } from './lib/middleware';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -79,6 +82,7 @@ const receiver = new ExpressReceiver({
   clientSecret: slackClientSecret,
   stateSecret: 'super-duper-mega-secrets',
   scopes: slackScopes,
+  processBeforeResponse: true,
   customPropertiesExtractor: (req) => {
     return {
       "headers": req.headers,
@@ -174,12 +178,24 @@ eventAppHomeOpened(slack);
 // Slack Actions
 // ------------------------------------------------------------------------------
 actionAuthSnyk(slack);
+slack.message('knock knock', async ({ say }) => {
+  await say('_Who\'s there?_');
+});
 
-// Middleware?
+// Middleware
+// ------------------------------------------------------------------------------
+
+// @TODO - I don't want to ignore this but I can't deal with it anymore.
+// @ts-ignore
+slack.use(expressSession ({
+  secret: uuidv4(),
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: true }
+}));
+
 const initializePassport = (receiver: ExpressReceiver) => {
-
   console.log(`Initializing Passport.`);
-
   passport.use(getSnykOAuth2());
   receiver.router.use(passport.initialize());
   receiver.router.use(passport.session());
