@@ -2,14 +2,15 @@
   "name": "Snyk for Slack (unofficial)",
   "version": "1.0.0",
   "description": "A Slack app for communicating with Snyk",
-  "main": "dist/app.js",
+  "main": "dist/App.js",
   "scripts": {
     "build": "tsc -p .",
     "build:watch": "tsc -w -p .",
     "clean": "rimraf ./dist",
+    "docs": "npx typedoc --out docs ./src/**/*.ts",
     "format": "prettier --write 'src/**/*.ts'",
     "ts:exports:glob": "./scripts/exportGlob.sh actions controllers exceptions middleware utils views types",
-    "start": "npm run build && node dist/app.js",
+    "start": "npm run build && node dist/App.js",
     "start2": "npm run build && node dist/app2.js"
   },
   "license": "MIT",
@@ -49,6 +50,7 @@
     "@typescript-eslint/eslint-plugin": "^5.33.0",
     "@typescript-eslint/parser": "^5.33.0",
     "ts-node": "^9.1.1",
+    "typedoc": "^0.23.10",
     "typescript": "^4.2.3",
     "typescript-eslint-language-service": "^5.0.0",
     "uuid": "^8.3.2"
