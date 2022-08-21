@@ -1,6 +1,3 @@
-// Handy reference:
-//  -
-
 import { App as Slack, ExpressReceiver, LogLevel } from '@slack/bolt';
 import * as dotenv from 'dotenv';
 import type { Application, NextFunction, Request, Response } from 'express';
@@ -29,7 +26,6 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Assign environment variables.
 // ------------------------------------------------------------------------------
-const appPort: string = process.env.PORT;
 const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
 const slackClientId = process.env.SLACK_CLIENT_ID;
 const slackClientSecret = process.env.SLACK_CLIENT_SECRET;
@@ -97,7 +93,7 @@ class App {
     this.initRoutes(controllers);
     this.initErrorHandler();
 
-    this.server = this.listen(3000);
+    this.server = this.listen(port || 3000);
   }
 
   private initStorage = () => {
@@ -124,6 +120,67 @@ class App {
 
     eventAppHomeOpened(slack);
     actionAuthSnyk(slack);
+
+    slack.command('/snyk', async ({ command, ack, respond }) => {
+      await ack();
+
+      const cmd : string = command.text.split(/\s+/)[0];
+      const subcmd : string = command.text.split(/\s+/)[1];
+      const param : string = command.text.split(/\s+/)[2];
+      const param2 : string = command.text.split(/\s+/)[3];
+      const param3 : string = command.text.split(/\s+/)[4];
+
+      console.log();
+      console.log('Received a command:');
+      console.log('--------------------------');
+      console.log('cmd:', cmd);
+      console.log('cmd type:', typeof cmd);
+      console.log('subcmd:', subcmd);
+      console.log('param:', param);
+      console.log('param2:', param2);
+      console.log('param3:', param3);
+      console.log('--------------------------');
+      console.log();
+
+      switch (cmd) {
+        case 'org':
+          if (subcmd === 'show') {
+            await respond(`The current Snyk Organization context for commands is: @TODO YOUR_ORG`);
+          }
+          if (subcmd === 'switch') {
+
+            if (typeof param === 'undefined') {
+              await respond(`To switch your current Snyk Organization, provide its name as a parameter to this command.`);
+            } else {
+              // @TODO - gotta actually make sure it exists, and also be able to store context state.
+              await respond(`Okay, switching context to ${param}`);
+            }
+
+          }
+          break;
+        case 'orgs':
+          if (subcmd === 'list') {
+            const data = db.readFromDb();
+
+            const orgs = (await data).snykAppInstalls[0].orgs;
+            let orgString = '';
+            orgs.map((org) => {
+              orgString += org.name + ' ';
+            });
+            await respond(`I know about these orgs: ${orgString}`);
+          } else {
+            await respond(`You probably want your Snyk orgs. Try \`/snyk orgs list\`.`);
+          }
+          break;
+        case 'projects':
+          await respond(`You want your Snyk orgs.`);
+          break;
+        default:
+          await respond(`Thanks for flying Snyk (unofficial)`);
+      }
+
+      // await respond(`${command.text}`);
+    });
 
     return slack;
   }
@@ -316,7 +373,7 @@ new App([
   new SnykPreAuthController(),
   new SnykAuthCallbackController(),
   new SnykAuthController(),
-], 3000);
+], parseInt(process.env.PORT));
 
 // Initialize our persistent JSON file store / pseudo-database.
 // We should do something else in production.

@@ -1,5 +1,5 @@
 import { JSONFile, Low } from 'lowdb';
-import { dbPath } from '../../app';
+import { dbPath } from '../../App';
 import { DB, SnykAuthData, SlackInstallData } from '../../types';
 
 /**

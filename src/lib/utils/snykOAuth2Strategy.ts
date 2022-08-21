@@ -5,7 +5,7 @@ import jwt_decode from 'jwt-decode';
 import { VerifyCallback } from 'passport-oauth2';
 import path from 'path';
 import { v4 as uuid4 } from 'uuid';
-import { SNYK_API_BASE, SNYK_APP_BASE } from '../../app';
+import { SNYK_API_BASE, SNYK_APP_BASE } from '../../App';
 import { SnykAPIVersion, SnykAuthData } from '../../types';
 import { callSnykApi } from './callSnykApi';
 import * as db from './db';

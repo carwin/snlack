@@ -1,7 +1,7 @@
 import axios from 'axios';
 import qs from 'qs';
 import { SnykOAuth2GrantType, SnykAuthData, Envars } from '../../types';
-import { SNYK_API_BASE } from '../../app';
+import { SNYK_API_BASE } from '../../App';
 
 const snykTokenUri = '/oauth2/token';
 

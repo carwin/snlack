@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { SnykAPIVersion } from '../../types';
-import { SNYK_API_BASE } from '../../app';
+import { SNYK_API_BASE } from '../../App';
 import { refreshTokenReqInterceptor, refreshTokenRespInterceptor } from './axiosInterceptors';
 
 /**
