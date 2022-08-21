@@ -67,21 +67,33 @@ console.log('slack client secret:', slackClientSecret);
 class App {
   public expressApp: Application;
   public app: Slack;
-  // public slack: { slack: Slack, receiver: ExpressReceiver };
-  // public fileStore: FileInstallationStore;
   private server: Server | Promise<any>;
 
   constructor(controllers: Controller[], port: number) {
     this.initStorage();
 
-    // Initialize the application like we used to.
-    // this.expressApp = express();
+    // First initialize a Bolt receiver (ExpressReceiver).
     const receiver = this.initExpressReceiver()
+
     this.expressApp = receiver.app;
+
+    // Create the Bolt App, using the receiver.
     this.app = this.initBoltApplication(receiver);
-    // this.slack = this.initSlack();
+
+    // Initialize our global middleware. There's a decent chunk.
     this.initGlobalMiddleware();
 
+    // We implement/abstract a Controller type for managing routes and
+    // their associated handlers.
+    // The important thing to know here is that these are typically outside
+    // of the Bolt app. Slack interactions are methods on this.app. Other
+    // web requests are methods on receiver.router.
+    //
+    // There's more info on this page, though the relevant bits are collapsed
+    // by default when you go to the page. Look for "Custom ExpressReceiver routes."
+    //
+    // @see https://slack.dev/bolt-js/concepts#custom-routes
+    //
     this.initRoutes(controllers);
     this.initErrorHandler();
 

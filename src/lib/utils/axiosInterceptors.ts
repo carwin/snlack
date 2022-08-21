@@ -62,8 +62,9 @@ export async function refreshTokenRespInterceptor(error: AxiosError): Promise<Ax
  * @returns string Newly refreshed access-token
  */
 async function refreshAndUpdateDb(data: SnykAuthData): Promise<string> {
-  // Create a instance for encryption and decryption
-  const eD = new EncryptDecrypt(process.env[Envars.SnykEncryptionSecret] as string);
+  console.log('Time to refresh and update the db...');
+    // Create a instance for encryption and decryption
+  const eD = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
   // Make request to refresh token
   const { access_token, expires_in, refresh_token, scope, token_type } = await refreshSnykAuthToken(
     eD.decryptString(data.refresh_token),

@@ -15,8 +15,8 @@ const snykTokenUri = '/oauth2/token';
 export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAuthData> => {
   const querystring = qs.stringify({
     grant_type: SnykOAuth2GrantType.RefreshToken,
-    client_id: process.env.SnykClientId,
-    client_secret: process.env.SnykClientSecret,
+    client_id: process.env.SNYK_CLIENT_ID,
+    client_secret: process.env.SNYK_CLIENT_SECRET,
     refresh_token: refreshToken,
   });
 
