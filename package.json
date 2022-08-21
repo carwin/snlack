@@ -8,12 +8,14 @@
     "build:watch": "tsc -w -p .",
     "clean": "rimraf ./dist",
     "format": "prettier --write 'src/**/*.ts'",
+    "ts:exports:glob": "./scripts/exportGlob.sh actions controllers exceptions middleware utils views types",
     "start": "npm run build && node dist/app.js",
     "start2": "npm run build && node dist/app2.js"
   },
   "license": "MIT",
   "dependencies": {
     "@slack/bolt": "^3.3.0",
+    "@slack/events-api": "^3.0.1",
     "@snyk/passport-snyk-oauth2": "^1.0.3",
     "axios": "^0.21.4",
     "config": "^3.3.7",

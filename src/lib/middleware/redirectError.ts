@@ -7,7 +7,7 @@ import type { Request, Response, NextFunction } from 'express';
  * such a taking user back to the authentication flow
  * @returns redirect error handling middleware
  */
-export function redirectError(req: Request, res: Response, next: NextFunction): void {
+export const redirectError = (req: Request, res: Response, next: NextFunction): void => {
   const { error, error_description } = req.query;
   return error ? next({ errCode: error, message: error_description }) : next();
 }
