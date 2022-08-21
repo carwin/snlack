@@ -15,10 +15,13 @@ const snykTokenUri = '/oauth2/token';
 export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAuthData> => {
   const querystring = qs.stringify({
     grant_type: SnykOAuth2GrantType.RefreshToken,
-    client_id: process.env[Envars.SnykClientId],
-    client_secret: process.env[Envars.SnykClientSecret],
+    client_id: process.env.SnykClientId,
+    client_secret: process.env.SnykClientSecret,
     refresh_token: refreshToken,
   });
+
+  console.log('refreshing? here is the querystring: ', querystring);
+
   try {
     const result = await axios({
       method: 'POST',

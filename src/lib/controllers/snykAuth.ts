@@ -19,7 +19,6 @@ export class SnykAuthController implements Controller {
   }
 
   private initRoutes() {
-    console.log('We arrived at the /snyk/auth route. This should trigger all the browser-based things.');
     this.router.get(`${this.path}`, passport.authenticate('snyk-oauth2'));
   }
 }

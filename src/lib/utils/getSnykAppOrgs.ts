@@ -20,6 +20,12 @@ interface V1ApiOrg {
  * @returns snykOrg data or throws and error
  */
 export const getSnykAppOrgs = async (tokenType: string, accessToken: string): Promise<{ orgs: SnykOrg[] }> => {
+
+  console.log('');
+  console.log('Calling getSnykAppOrgs...');
+  console.log(`Using access token: ${accessToken}`);
+  console.log('');
+
   try {
     const result = await callSnykApi(
       tokenType,

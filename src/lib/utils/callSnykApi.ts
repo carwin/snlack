@@ -13,7 +13,8 @@ import { refreshTokenReqInterceptor, refreshTokenRespInterceptor } from './axios
 export function callSnykApi(tokenType: string, token: string, version: SnykAPIVersion): AxiosInstance {
   const contentType = version === SnykAPIVersion.V1 ? 'application/json' : 'application/vnd.api+json';
 
-  console.log('axios used this one:', token);
+  console.log(`called Snyk API ${version} with ${tokenType} token: ${token}.`)
+
   const axiosInstance = axios.create({
     baseURL: `${SNYK_API_BASE}/${version}`,
     headers: {

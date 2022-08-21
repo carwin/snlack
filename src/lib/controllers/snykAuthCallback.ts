@@ -2,8 +2,8 @@ import type { Controller } from '../../types';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import passport from 'passport';
-import { HTTPException } from '../exceptions/HTTPException';
-import { redirectError } from '../middleware/redirectError';
+import { HTTPException } from '../exceptions';
+import { redirectError } from '../middleware';
 
 /**
  * The SnykAuthCallbackController class for handling the last
@@ -22,7 +22,9 @@ export class SnykAuthCallbackController implements Controller {
    * The constructor is used to initialize the
    * routes for this controller
    */
+
   constructor() {
+    console.log('Constructing the auth callback controller');
     this.initRoutes();
   }
 
