@@ -1,4 +1,5 @@
 import { App as Slack, ExpressReceiver, LogLevel } from '@slack/bolt';
+import { Installation } from '@slack/bolt';
 import * as dotenv from 'dotenv';
 import type { Application, NextFunction, Request, Response } from 'express';
 import express from 'express';
@@ -9,7 +10,7 @@ import passport from 'passport';
 import path, { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './lib/utils/db';
-import { SlackInstallData } from './types';
+import { SlackInstallData, SnlackUser } from './types';
 
 //local Imports
 import rateLimit from 'express-rate-limit';
@@ -60,9 +61,20 @@ console.log('slack client secret:', slackClientSecret);
 
 // Application class definition
 // ------------------------------------------------------------------------------
-class App {
+/**
+ * The primary entrypoint / basis for the application.
+ *
+ * @category root
+ * */
+export class Snlack {
+  /** A public Express.js app instance. */
   public expressApp: Application;
+  /** A public Bolt app instance. */
   public app: Slack;
+  /**
+   * A private server property which likely has no need to be accessed and
+   * thus defines no getter or setter.
+   **/
   private server: Server | Promise<any>;
 
   constructor(controllers: Controller[], port: number) {
@@ -76,9 +88,9 @@ class App {
     // Create the Bolt App, using the receiver.
     this.app = this.initBoltApplication(receiver);
 
+
     // Initialize our global middleware. There's a decent chunk.
     this.initGlobalMiddleware();
-
     // We implement/abstract a Controller type for managing routes and
     // their associated handlers.
     // The important thing to know here is that these are typically outside
@@ -214,31 +226,36 @@ class App {
       installationStore: {
         storeInstallation: async (installation) => {
           try {
-            let newData: SlackInstallData = {
-              date: new Date(),
-              installation,
-              enterpriseId: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterprise.id : undefined : undefined,
-              teamId: !installation.isEnterpriseInstall ? installation.team?.id : undefined,
-              userId: installation.user.id
+            let userInstallData: SnlackUser = {
+              slackUid: installation.user.id,
+              slackInstallationDate: new Date(),
+              slackTeamId: !installation.isEnterpriseInstall ? installation.team?.id : undefined,
+              slackTeamName: !installation.isEnterpriseInstall ? installation.team?.name : undefined,
+              slackEnterpriseId: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterprise.id : undefined : undefined,
+              slackEnterpriseUrl: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterpriseUrl : undefined : undefined,
             };
-            return db.writeToDb(null, newData);
+
+            let appInstallData: Installation = installation;
+
+            return db.dbWriteSlackInstallEntries(userInstallData, appInstallData);
+
           } catch (error) {
             console.log('Error saving Slack App installation data', error);
-            throw new Error('Failed saving installation data to installationStore');
+            throw new Error(`Failed saving installation data to installationStore: ${error}`);
           }
         },
         // takes in an installQuery as an argument
         // installQuery = {teamId: 'string', enterpriseId: 'string', userId: 'string', conversationId: 'string', isEnterpriseInstall: boolean};
         // returns installation object from database
+        // @ts-ignore
         fetchInstallation: async (installQuery) => {
           try {
             if (installQuery.isEnterpriseInstall && typeof installQuery.enterpriseId !== 'undefined') {
-              //   // org wide app installation lookup
-              return await db.getDbRecordByKey({ recordType: 'slack', queryKey: 'enterpriseId', queryVal: installQuery.enterpriseId });
+              // org wide app installation lookup
+              return await db.dbReadEntry({ table: 'slackAppInstalls', key: 'slackEnterpriseId', value: installQuery.enterpriseId });
             }
             if (typeof installQuery.teamId !== 'undefined') {
-              console.log('Got asked for a DB lookup on Slack team ID');
-              return await db.getDbRecordByKey({ recordType: 'slack', queryKey: 'teamId', queryVal: installQuery.teamId });
+              return await db.dbReadEntry({ table: 'slackAppInstalls', key: 'team.id', value: installQuery.teamId });
             }
           } catch (error) {
             console.log('Got an error fetching installation data: ', error);
@@ -268,22 +285,6 @@ class App {
 
   }
 
-  private initSlack = () => {
-    // const slackReceiver = this.initExpressReceiver();
-    // const slackApp = this.initBoltApplication(slackReceiver);
-
-    // this.app.use('/slack/events', slackReceiver.router);
-    // this.app.use('/slack/events', this.slack.slack.event('app_home_opened', ({ context, ack }) => {
-    //   console.log('hmm...');
-    // }));
-
-    // return {
-    //   slack: slackApp,
-    //   receiver: slackReceiver,
-    // }
-
-  }
-
   private initRoutes(controllers: Controller[]) {
 
     controllers.forEach((controller: Controller) => {
@@ -294,23 +295,6 @@ class App {
   }
 
 
-  // private listen(port: number) {
-  //   return new Promise((resolve, reject) => {
-  //     try {
-  //       this.server = this.expressApp.listen(port, () => {
-  //         console.log(`
-  //           App listening on port: ${port}
-
-  //           User view: http://localhost:3000
-  //           Admin view: http://localhost:3000/admin`);
-
-  //         resolve(this.app);
-  //       });
-  //     } catch (error) {
-  //       reject(error);
-  //     }
-  //   });
-  // }
   private listen = async(port: number) => {
     await this.app.start(port || process.env.PORT || 3000);
     console.log('Bolt on.');
@@ -368,171 +352,14 @@ class App {
 
 // Create a new App instance.
 // ------------------------------------------------------------------------------
-new App([
+new Snlack([
   new AppIndexController(),
   new SnykPreAuthController(),
-  new SnykAuthCallbackController(),
   new SnykAuthController(),
+  // @ts-ignore
+  new SnykAuthCallbackController(this.app, this.expressApp),
 ], parseInt(process.env.PORT));
 
 // Initialize our persistent JSON file store / pseudo-database.
 // We should do something else in production.
 export let dbPath: string;
-
-
-// Create an ExpressReceiver
-
-// Create the Bolt App using the receiver.
-// const slack = new Slack({
-//   receiver,
-//   logLevel: LogLevel.DEBUG, // log at the App level.
-// });
-
-// @TODO: I don't remember why I added this.
-// slack.use(async ({ logger, context, next }) => {
-//   logger.info(context);
-//   await next();
-// })
-
-
-// Slack Events
-// ------------------------------------------------------------------------------
-// app_home_opened
-// app_mention
-// message.app_home
-// scope_granted
-// scope_denied
-// tokens_revoked
-
-// Slack Actions
-// ------------------------------------------------------------------------------
-// actionAuthSnyk(slack);
-// slack.message('knock knock', async ({ say }) => {
-//   await say('_Who\'s there?_');
-// });
-
-// Acknowledge the Snyk authing action, even though its a link out.
-// slack.action('auth_snyk', async ({ context, ack }) => {
-  // ack();
-// });
-
-// Middleware
-// ------------------------------------------------------------------------------
-
-// @TODO - I don't want to ignore this but I can't deal with it anymore.
-// @ts-ignore
-// receiver.app.use(express.urlencoded({ extended: true }));
-// receiver.app.use(express.json());
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 5 minutes
-//   max: 100, // limit each IP to 100 requests per windowMs
-// });
-// receiver.app.use(limiter);
-// initializePassport(receiver);
-
-// receiver.app.use(expressSession ({
-//   secret: uuidv4(),
-//   resave: false,
-//   saveUninitialized: true,
-//   cookie: { secure: true }
-// }));
-
-
-
-// initializePassport(receiver);
-// receiver.router.use(express.json());
-// receiver.router.use(express.urlencoded({ extended: true }));
-// receiver.router.use(expressSession({ secret: uuidv4(), resave: false, saveUninitialized: true }));
-
-// App Routes
-// ------------------------------------------------------------------------------
-// Set up other handling for other web requests as methods on receiver.router
-
-// receiver.router.get('/snyk/preauth', async (req, res) => {
-//   console.log('Pre auth time.');
-//   res.redirect('/snyk/auth');
-// });
-
-// receiver.router.get('/snyk/auth', async (req, res, next) => {
-//   console.log('Now we\'re on /snyk/auth');
-//   // You're working with an express req and res now.
-//   // res.redirect('/snyk/stuff');
-//   // https://app.snyk.io/oauth2/authorize?response_type=code&client_id={clientId}&redirect_uri={redirectURI}&scope={scopes}&nonce={nonce}&state={state}&version={version}
-//   passport.authenticate('snyk-oauth2');
-//   res.sendStatus(200);
-
-// });
-
-/**
- * Handle the success response of authentication
- * @returns The callback EJS template
- */
-// const snykAuthSuccess = (req: Request, res: Response, next: NextFunction) => {
-//   console.log('Hit the /snyk/callback/success route.');
-//   return res.send(200);
-//   console.log('SNYK AUTH SUCCESS.');
-// }
-/**
- * Handle the failure response of authentication
- * @returns Sends error through the next function to the
- * error handler middleware
- */
-// const snykAuthFailure = (req: Request, res: Response, next: NextFunction) => {
-//   console.log('Hit the /snyk/callback/failure route.');
-//   console.log('SNYK AUTH FAILURE.');
-//   // return res.sendStatus(401);
-//   return next(new HTTPException(401, 'Authentication failed'));
-//   // return next(new HttpException(401, 'Snyk Authentication failed'));
-// }
-// receiver.app.get(`/`, async (req, res, context) => {
-//   console.log('Index route at: /') ;
-//   res.send('You did it friend. You went to /.')
-// });
-
-// const passportAuthenticate = () => {
-//   console.log('Now triggering passport.authenticate()');
-//   return passport.authenticate('snyk-oauth2', {
-//     successRedirect: '/snyk/callback/success',
-//     failureRedirect: '/snyk/callback/failure',
-//   });
-// }
-// receiver.app.get(`/snyk/callback`, redirectError, passportAuthenticate());
-// receiver.app.get(`/snyk/callback/failure`, (req, res, next) => {
-//   snykAuthFailure(req, res, next);
-// });
-// receiver.app.get(`/snyk/callback/success`, (req, res, next) => {
-//   snykAuthSuccess(req, res, next);
-// });
-
-// receiver.app.get(`/snyk/auth`, passport.authenticate('snyk-oauth2'));
-
-// const snykAuthCallbackRoute = {
-//   path: '/snyk/callback',
-//   method: ['GET'],
-//   handler: passportAuthenticate()
-// }
-
-// receiver.router.get(`/synk/callback`, redirectError, passportAuthenticate());
-// receiver.router.post(`/synk/callback`, redirectError, passportAuthenticate());
-// receiver.router.get(`/synk/callback`, redirectError, async passportAuthenticate());
-// receiver.router.get('/snyk/callback', async (req, res) => {
-//   console.log('Hit the /snyk/callback route.');
-//   res.sendStatus(200);
-// });
-
-// receiver.router.get('/snyk/callback/success', snykAuthSuccess);
-// receiver.router.get('/snyk/callback/failure', snykAuthFailure);
-
-
-// receiver.router.get('/slack/auth', (req, res) => {
-//   // You're working with an express req and res now.
-//   // res.redirect('/snyk/stuff');
-//   // installProvider.handleCallback(req, res);
-// });
-
-
-
-// (async () => {
-//   await slack.start(appPort);
-//   console.log('Express app is running');
-// })();
