@@ -21,6 +21,8 @@ import { HTTPException } from './lib/exceptions';
 import { redirectError, requestError } from './lib/middleware';
 import { getSnykOAuth2 } from './lib/utils';
 import { Controller } from './types';
+import { SnykCommand } from './lib/commands/snyk';
+import { actionConfigSnyk } from './lib/actions';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -131,68 +133,15 @@ export class Snlack {
     });
 
     eventAppHomeOpened(slack);
-    actionAuthSnyk(slack);
+    actionAuthSnyk(slack, this.expressApp);
+    actionConfigSnyk(slack, this.expressApp);
 
-    slack.command('/snyk', async ({ command, ack, respond }) => {
-      await ack();
+    new SnykCommand(slack);
 
-      const cmd : string = command.text.split(/\s+/)[0];
-      const subcmd : string = command.text.split(/\s+/)[1];
-      const param : string = command.text.split(/\s+/)[2];
-      const param2 : string = command.text.split(/\s+/)[3];
-      const param3 : string = command.text.split(/\s+/)[4];
 
-      console.log();
-      console.log('Received a command:');
-      console.log('--------------------------');
-      console.log('cmd:', cmd);
-      console.log('cmd type:', typeof cmd);
-      console.log('subcmd:', subcmd);
-      console.log('param:', param);
-      console.log('param2:', param2);
-      console.log('param3:', param3);
-      console.log('--------------------------');
-      console.log();
-
-      switch (cmd) {
-        case 'org':
-          if (subcmd === 'show') {
-            await respond(`The current Snyk Organization context for commands is: @TODO YOUR_ORG`);
-          }
-          if (subcmd === 'switch') {
-
-            if (typeof param === 'undefined') {
-              await respond(`To switch your current Snyk Organization, provide its name as a parameter to this command.`);
-            } else {
-              // @TODO - gotta actually make sure it exists, and also be able to store context state.
-              await respond(`Okay, switching context to ${param}`);
-            }
-
-          }
-          break;
-        case 'orgs':
-          if (subcmd === 'list') {
-            const data = db.readFromDb();
-
-            const orgs = (await data).snykAppInstalls[0].orgs;
-            let orgString = '';
-            orgs.map((org) => {
-              orgString += org.name + ' ';
-            });
-            await respond(`I know about these orgs: ${orgString}`);
-          } else {
-            await respond(`You probably want your Snyk orgs. Try \`/snyk orgs list\`.`);
-          }
-          break;
-        case 'projects':
-          await respond(`You want your Snyk orgs.`);
-          break;
-        default:
-          await respond(`Thanks for flying Snyk (unofficial)`);
-      }
-
-      // await respond(`${command.text}`);
-    });
+    //   // await respond(`${command.text}`);
+    // });
+    // slack.use(expressSession({ secret: uuidv4(), resave: false, saveUninitialized: true }));
 
     return slack;
   }

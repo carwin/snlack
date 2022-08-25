@@ -77,7 +77,7 @@ export class SlackHomeView implements HomeView {
         type: 'header',
         text: {
           type: 'plain_text',
-          text: 'Authorize Snyk',
+          text: 'Configuration',
           emoji: true
         }
       },
@@ -85,7 +85,7 @@ export class SlackHomeView implements HomeView {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `Before you can leverage this app's Slack commands or interact with the bot, you'll need to authorize the app with Snyk to allow it to access your data.\n\n Click the button below to get started.`
+          text: `Click the button below to begin configuring the Snyk integration.`
         }
       },
       {
@@ -95,13 +95,13 @@ export class SlackHomeView implements HomeView {
             type: 'button',
             text: {
               type: 'plain_text',
-              text: 'Connect to Snyk',
+              text: 'Configure Snyk',
               emoji: true
             },
             value: `${user}`,
-            url: 'http://localhost:3000/snyk/preauth',
+            // url: `http://localhost:3000/snyk/preauth?slackUserId=${user}`,
             // url: `http://localhost:3000/snyk/auth?suid=${user}`,
-            action_id: 'auth_snyk'
+            action_id: 'config_snyk'
           }
         ]
       },

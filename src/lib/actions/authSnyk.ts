@@ -1,9 +1,13 @@
 import { App as Slack } from '@slack/bolt';
+import { Application } from 'express';
 
-export const actionAuthSnyk = (slack: Slack) => {
+export const actionAuthSnyk = (slack: Slack, expressApp: Application) => {
 
   slack.action('auth_snyk', async ({ ack, context, body, payload }) => {
-    ack();
+    await ack();
+
+    context.slackUserId = body.user.id;
+      // @ts-ignore
     console.log('Hey, the auth button was clicked!');
     console.log(`here is the payload: ${Object.keys(payload)}`);
     console.log(`Payload Type: ${payload.type}`);
