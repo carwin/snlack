@@ -32,9 +32,12 @@ export class SnykPreAuthController implements Controller {
 
   private preAuthHandler(req: Request, res: Response, next: NextFunction) {
     // @ts-ignore
-    // console.log(req);
+    req.session.slackUserId = req.query.slackUserId;
+    // console.log('options!', this.router.head);
+    console.log(req.session);
+
     console.log('Here we are at the preauth handler. Redirecting to /auth.');
-    res.redirect('/snyk/auth');
+    res.redirect(`/snyk/auth?slackUserId=${req.query.slackUserId}`);
     next();
   }
 

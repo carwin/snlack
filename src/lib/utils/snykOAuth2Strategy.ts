@@ -87,6 +87,18 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
         const decoded: JWT = jwt_decode(access_token);
         if (nonce !== decoded.nonce) throw new Error('Nonce values do not match');
         const { expires_in, scope, token_type } = params;
+        // @ts-ignore
+        console.log('req url in oauth strat', req.url);
+        // @ts-ignore
+        console.log('req session in strat', req.session);
+          // const slackUserId = req.url.match(/slackUserId=([^&]*)/)[1];
+        let slackUserId: string | null = null;
+        // @ts-ignore
+        if (req.session && req.session.slackUserId) {
+          // @ts-ignore
+          slackUserId = req.session.slackUserId;
+        }
+        // console.log('Slack User Id in oauthstrat:', slackUserId);
         /**
          * This function to get the orgs itself can be passed
          * as the profile functions as the auth token for Snyk Apps
@@ -104,7 +116,8 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
           token_type,
           refresh_token: ed.encryptString(refresh_token),
           nonce,
-        } as SnykAuthData, null);
+         // @ts-ignore
+        } as SnykAuthData, null, slackUserId as string);
       } catch (error) {
         return done(error as Error, false);
       }

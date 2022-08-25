@@ -1,7 +1,7 @@
 import type { AxiosError, AxiosRequestConfig } from 'axios';
 import { SnykAuthData, Envars } from '../../types';
 import { DateTime } from 'luxon'; // A library for dealing with dates and times in js.
-import { readFromDb, updateDb, mostRecentSnykInstall } from './db';
+import { readFromDb } from './db';
 // import { mostRecent } from '../../../controllers/projects/projectsHandlers';
 import { EncryptDecrypt } from './encryptDecrypt';
 import { refreshSnykAuthToken } from './refreshSnykAuthToken';
@@ -18,7 +18,11 @@ import axios from 'axios';
 export async function refreshTokenReqInterceptor(request: AxiosRequestConfig): Promise<AxiosRequestConfig> {
   // Read the latest data(auth token, refresh token and expiry)
   const db = await readFromDb();
+  // @ts-ignore
+  // @TODO
   const data = mostRecentSnykInstall(db.snykAppInstalls);
+  // @ts-ignore
+  console.log('Does the interceptor have the session?:', request.session);
   // If no data then continue with the request
   if (!data) return request;
   // Data used to calculate the expiry
@@ -42,6 +46,8 @@ export async function refreshTokenRespInterceptor(error: AxiosError): Promise<Ax
   if (status === 401) {
     // Read the latest data(auth token, refresh token and expiry)
     const db = await readFromDb();
+    // @ts-ignore
+    // @TODO
     const data = mostRecentSnykInstall(db.snykAppInstalls);
     // If no data then fail the retry
     if (!data) return Promise.reject(error);
@@ -71,6 +77,8 @@ async function refreshAndUpdateDb(data: SnykAuthData): Promise<string> {
   );
   // Update the access and refresh token with the newly fetched access and refresh token
   // along with the expiry and other required info
+  // @TODO
+  // @ts-ignore
   await updateDb('snykAuth', data, {
     ...data,
     access_token: eD.encryptString(access_token),
