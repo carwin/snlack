@@ -4,6 +4,8 @@ import { Router } from 'express';
 import passport from 'passport';
 import { HTTPException } from '../exceptions';
 import { redirectError } from '../middleware';
+import { Application } from 'express';
+import { App as Slack } from '@slack/bolt';
 
 /**
  * The SnykAuthCallbackController class for handling the last
@@ -23,13 +25,13 @@ export class SnykAuthCallbackController implements Controller {
    * routes for this controller
    */
 
-  constructor() {
-    console.log('Constructing the auth callback controller');
+  constructor(slack: Slack, expressApp: Application) {
+    console.enter('Entering SnykAuthCallbackController.constructor()...');
     this.initRoutes();
   }
 
   private initRoutes() {
-    console.log('Now at the authcallback Controller\'s initRoutes().');
+    console.enter('Entering SnykAuthCallbackController.initRoutes()...');
     // Path to handle the result of authentication flow or the callback/redirect_uri
     // Uses redirect err middleware to handle error passed in query parameters of the redirect_uri
     this.router.get(`${this.path}`, redirectError, this.passportAuthenticate());
@@ -40,7 +42,7 @@ export class SnykAuthCallbackController implements Controller {
   }
 
   private passportAuthenticate() {
-    console.log('Now triggering passport.authenticate()');
+    console.enter('Entering SnykAuthCallbackController.passportAuthenticate()...');
     return passport.authenticate('snyk-oauth2', {
       successRedirect: '/snyk/callback/success',
       failureRedirect: '/snyk/callback/failure',
@@ -51,7 +53,10 @@ export class SnykAuthCallbackController implements Controller {
    * @returns The callback EJS template
    */
   private success(req: Request, res: Response, next: NextFunction) {
+    console.enter('Entering SnykAuthCallbackController.success()...');
     return res.send(200);
+    // @ts-ignore
+    console.log('req session success?', req.session.slackUserId);
     console.log('SNYK AUTH SUCCESS.');
     // return res.render('callback');
   }

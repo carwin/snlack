@@ -1,5 +1,6 @@
-import { SnykAPIVersion, SnykOrg } from '../../types';
+import { SnykAPIVersion, SnykOrg, SnykProject, SnlackUser } from '../../types';
 import { callSnykApi } from './callSnykApi';
+import { dbReadEntry, dbReadNestedEntry } from './db';
 
 interface RestApiOrg {
   id: string;
@@ -19,11 +20,12 @@ interface V1ApiOrg {
  * @param {String} accessToken access token fetched on users behalf
  * @returns snykOrg data or throws and error
  */
-export const getSnykAppOrgs = async (tokenType: string, accessToken: string): Promise<{ orgs: SnykOrg[] }> => {
+export const getSnykAppOrgs = async (slackCallerUid: string, tokenType: string, accessToken: string): Promise<{ orgs: SnykOrg[] }> => {
 
   console.log('');
   console.log('Calling getSnykAppOrgs...');
   console.log(`Using access token: ${accessToken}`);
+  console.log(`Received this caller ID: ${slackCallerUid}`);
   console.log('');
 
   try {
@@ -34,6 +36,9 @@ export const getSnykAppOrgs = async (tokenType: string, accessToken: string): Pr
     )({
       method: 'GET',
       url: `/orgs?version=2022-04-06~experimental`,
+      params: {
+        slackCaller: slackCallerUid
+      }
     });
 
     return {
@@ -46,3 +51,7 @@ export const getSnykAppOrgs = async (tokenType: string, accessToken: string): Pr
     throw error;
   }
 }
+
+
+
+

@@ -1,6 +1,8 @@
 import { App as Slack, AllMiddlewareArgs, SlackCommandMiddlewareArgs } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
-import { dbDeleteEntry, readFromDb } from '../utils';
+import { dbDeleteEntry, dbWriteEntry, getDbEntryIndex, getSnykOrgIdByName, getSnykProjects, readFromDb } from '../utils';
+import db from 'lowdb';
+import { SnlackUser } from '../../types';
 
 export interface CommandRegisterFn {
   (slack: Slack): Promise<any>;
@@ -80,6 +82,65 @@ export class SnykCommand extends Command {
           dbDeleteEntry({ table: 'slackAppInstalls', key: 'user.id', value: 'U03SNLU01JA' });
           dbDeleteEntry({ table: 'users', key: 'slackUid', value: 'U03SNLU01JA' });
         }
+      case 'project':
+        // `/snyk project` command entrypoint.
+        if (typeof subcmd === 'undefined') {
+          await respond('You probably meant to pass a parameter like `list`. Try this:\n \`\`\`/snyk project list\`\`\`\nor\n\`\`\`/snyk project list \'My Org Name\'\`\`\`');
+        }
+        //
+        // List all the projects within Org (param);
+        //
+        else if (subcmd === 'list' && typeof param !== 'undefined') {
+            // @ts-ignore
+          try {
+            const existingEntryIndex: any = await getDbEntryIndex({ table: 'users', key: 'slackUid', value: command.user_id });
+
+            if (existingEntryIndex && typeof existingEntryIndex !== 'boolean') {
+              const dbContent = await readFromDb();
+              const existingEntry = dbContent.users[existingEntryIndex];
+              console.log('Existing Entry::::::::::', existingEntry);
+
+              if (typeof existingEntry.snykProjects !== 'undefined' && existingEntry.snykProjects.length >= 1) {
+                // We already have projects locally.
+                console.log('existingEntry.snykProjects is not undefined.');
+                let message = '';
+                existingEntry.snykProjects.forEach((proj) => {
+                  if (proj.name === param) {
+                    message += `${proj.name}\n`;
+                  }
+                });
+
+                console.log('The param was: ', param);
+                console.log('Here is the final message: ', message);
+
+                await respond(message || `No projects in the ${param} organization.`);
+
+              } else {
+                console.log('We have an entry, but no snyk projects');
+                // We have an entry but no projects.
+                const orgId = await getSnykOrgIdByName(param);
+                console.log(`Looked up orgID for ${param}: ${orgId}`);
+                if (typeof orgId === 'string') {
+                  const remoteData = await getSnykProjects(command.user_id, existingEntry.snykTokenType as string, existingEntry.snykAccessToken as string, orgId as string);
+                  existingEntry.snykProjects = remoteData.projects;
+                  existingEntry.snykProjects.map( (proj) => {
+                    proj.org = param;
+                    proj.orgId = orgId;
+                  } )
+                  await dbWriteEntry({ table: 'users', data: existingEntry });
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Got an error handling Slack command: `/snyk project list <snyk org>`.');
+            throw error;
+          }
+        }
+        // List all projects, regardless of Org
+        if (subcmd === 'list' && typeof param === 'undefined') {
+
+        }
+
       default:
         await respond('You gotta gimme something');
         break;

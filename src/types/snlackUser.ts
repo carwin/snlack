@@ -1,4 +1,4 @@
-import { SnykOrg, SnykAuthData }  from './';
+import { SnykOrg, SnykProject, SnykAuthData }  from './';
 
 /**
  * Interface describing a user of this Slack App
@@ -6,8 +6,8 @@ import { SnykOrg, SnykAuthData }  from './';
  * This interface contains elements from both the Slack App and the Snyk App.
  **/
 export interface SnlackUser {
-  [slackUid: string | number]: string | string[] | undefined | Date | number | SnykOrg[];
-  slackUid: string;
+  [propName: string]: any;
+  slackUid?: string;
   slackName?: string;
   slackTeamId?: string;
   slackTeamName?: string;
@@ -17,6 +17,7 @@ export interface SnlackUser {
   snykUid?: string;
   snykAuthDate?: Date;
   snykOrgs?: SnykOrg[];
+  snykProjects?: SnykProject[];
   snykAccessToken?: string;
   snykTokenExpiry?: number;
   snykScopes?: string;

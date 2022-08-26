@@ -1,7 +1,7 @@
 import { SnykOrg } from './';
 
 export interface SnykAuthData {
-  [index: string]: string | Date | SnykOrg[] | number;
+  [index: string]: any;
   date: Date;
   snykUserId: string;
   slackUserId: string;

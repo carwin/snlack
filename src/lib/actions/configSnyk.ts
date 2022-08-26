@@ -1,56 +1,47 @@
-import { App as Slack, ModalView, View } from '@slack/bolt';
-import { Application } from 'express';
-import { readFromDb, writeToDb, dbReadEntry } from '../utils';
+import { App as Slack } from '@slack/bolt';
+import { state } from '../../App';
 import { AppHomeConfigView } from '../views';
 
-export const actionConfigSnyk = (slack: Slack, expressApp: Application) => {
+/**
+ * Handles the `config_snyk` action.
+ *
+ * This action is triggered when a user clicks a particular button on the App's
+ * Home view.
+ *
+ * @see snykPreAuthController()'s remarks for more info.
+ **/
+// @TODO: Figure out how to link the @see statement in the typedoc comment.
+export const actionConfigSnyk = (slack: Slack) => {
+  slack.action('config_snyk', async ({ ack, body, client }) => {
+    console.enter('Entering actionConfigSnyk()...');
 
-  slack.action('config_snyk', async ({ ack, context, body, payload, client }) => {
+    // Acknowledge the reception of payload.
     await ack();
 
-    context.slackUserId = body.user.id;
-      // @ts-ignore
-    console.log('Hey, the auth button was clicked!');
-    console.log(`here is the payload: ${Object.keys(payload)}`);
-    console.log(`Payload Type: ${payload.type}`);
-    // @ts-ignore
-    console.log(`Payload action ID: ${payload.action_id}`);
-    // @ts-ignore
-    console.log(`Payload action ID: ${payload.trigger_id}`);
-    // @ts-ignore
-    console.log(`Payload Value: ${payload.value}`);
-    console.log(`here is the body: ${Object.keys(body)}`);
-    console.log(`User: ${body.user}`);
-    console.log(`Type: ${body.type}`);
-    console.log(`Team: ${body.team}`);
+    // User is changed here in response to the action event.
+    // While this is happening the user is also hitting the /preauth route controller
+    // then the /auth controller and axios interceptors.
+    state.changeUser(body.user.id);
 
     try {
       const snykConfigView: AppHomeConfigView = new AppHomeConfigView({user: body.user.id, snykAuthStatus: false});
       // @ts-ignore
       const view = snykConfigView.view;
-      console.log('view?', view);
 
       const modalPayload = {
-      // @ts-ignore
-        trigger_id: body.trigger_id,
+        // @ts-ignore
+        trigger_id: body.trigger_id, // @TODO: Fix @ts-ignore
         view,
       }
-      console.log('Modal Payload', modalPayload);
-        // @ts-ignore
+
+      // Open the modal view.
       await client.views.open(modalPayload);
 
-      const dbData = await readFromDb();
-
-      // if (typeof dbData[body.user.id] !== 'undefined') {
-      //   // User already in Users array
-      // } else {
-      //   writeToDb(null, null, body.user.id);
-      // }
-
     } catch (error) {
-      // @ts-ignore
-      // console.log('error in snyk config view action', error.data.response_metadata.messages);
-      console.log('error in snyk config view action', error);
+      console.error('Error in actionConfigSnyk()', error);
+      throw error;
+    } finally {
+      console.leave(`Leaving actionConfigSnyk()...`);
     }
   });
 }

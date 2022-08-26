@@ -1,4 +1,16 @@
 declare global {
+  // namespace Express {
+  //   interface Request {
+  //     session?: Session;
+  //     sessionID?: string;
+  //   }
+  // }
+  interface Console {
+    enter(msg?: string): void;
+    leave(msg?: string): void;
+    problem(msg: string): void;
+  }
+
   namespace NodeJS {
     interface ProcessEnv {
       PORT: string;
@@ -13,5 +25,10 @@ declare global {
     }
   }
 }
+
+
+// console.fn = {};
+// console.fn.enter = fnEnter;
+// console.fn.exit = fnExit;
 
 export {}

@@ -13,6 +13,7 @@ const snykTokenUri = '/oauth2/token';
  * @returns Promise that will return data or throw an error
  */
 export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAuthData> => {
+  console.log('Entering refreshSnykAuthToken()...');
   const querystring = qs.stringify({
     grant_type: SnykOAuth2GrantType.RefreshToken,
     client_id: process.env.SNYK_CLIENT_ID,
@@ -30,6 +31,8 @@ export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAu
       data: querystring,
     });
     console.log('result of refresh', result.data);
+
+    console.log('Returning from refreshSnykAuthToken()...');
     return result.data;
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {

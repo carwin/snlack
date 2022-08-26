@@ -1,28 +1,27 @@
-import { App as Slack, ExpressReceiver, LogLevel } from '@slack/bolt';
-import { Installation } from '@slack/bolt';
+import { App as Slack, ExpressReceiver, Installation, LogLevel } from '@slack/bolt';
 import * as dotenv from 'dotenv';
-import type { Application, NextFunction, Request, Response } from 'express';
+import type { Application } from 'express';
 import express from 'express';
-import expressSession from 'express-session';
+import expressSession, { Session } from 'express-session';
 import * as fs from 'fs';
 import type { Server } from 'http';
 import passport from 'passport';
 import path, { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './lib/utils/db';
-import { SlackInstallData, SnlackUser } from './types';
+import { SnlackUser } from './types';
 
 //local Imports
 import rateLimit from 'express-rate-limit';
+import { actionConfigSnyk } from './lib/actions';
 import { actionAuthSnyk } from './lib/actions/authSnyk';
+import { SnykCommand } from './lib/commands/snyk';
 import { AppIndexController, SnykAuthCallbackController, SnykAuthController, SnykPreAuthController } from './lib/controllers';
 import { eventAppHomeOpened } from './lib/events/apphome/opened';
-import { HTTPException } from './lib/exceptions';
-import { redirectError, requestError } from './lib/middleware';
-import { getSnykOAuth2 } from './lib/utils';
+import { requestError } from './lib/middleware';
+import { getSnykOAuth2, stateHandler, userState } from './lib/utils';
+import { fnEnter, fnError, fnExit } from "./lib/utils/consoleExtensions";
 import { Controller } from './types';
-import { SnykCommand } from './lib/commands/snyk';
-import { actionConfigSnyk } from './lib/actions';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -36,6 +35,30 @@ const slackClientSecret = process.env.SLACK_CLIENT_SECRET;
 // const slackSocketToken = process.env.SLACK_SOCKET_TOKEN;
 export const SNYK_API_BASE = 'https://api.snyk.io';
 export const SNYK_APP_BASE = 'https://app.snyk.io';
+
+// Extend console.
+Object.defineProperties(console, {
+  // fn: {
+  //   value: {
+  //     enter: {
+  //       value: fnEnter,
+  //     },
+  //     exit: {
+  //       value: fnExit,
+  //     }
+  //   }
+  // }
+  enter: {
+    value: fnEnter
+  },
+  leave: {
+    value: fnExit
+  },
+  problem: {
+    value: fnError
+  }
+});
+
 
 // Define scopes.
 // ------------------------------------------------------------------------------
@@ -59,7 +82,7 @@ const slackScopes: string[] = [
 
 console.log('slack client id:', slackClientId);
 console.log('slack client secret:', slackClientSecret);
-
+export const state = new Proxy(userState, stateHandler);
 
 // Application class definition
 // ------------------------------------------------------------------------------
@@ -73,6 +96,7 @@ export class Snlack {
   public expressApp: Application;
   /** A public Bolt app instance. */
   public app: Slack;
+  public state: any;
   /**
    * A private server property which likely has no need to be accessed and
    * thus defines no getter or setter.
@@ -81,6 +105,8 @@ export class Snlack {
 
   constructor(controllers: Controller[], port: number) {
     this.initStorage();
+
+    this.state = state; // global. probably not forever.
 
     // First initialize a Bolt receiver (ExpressReceiver).
     const receiver = this.initExpressReceiver()
@@ -133,15 +159,10 @@ export class Snlack {
     });
 
     eventAppHomeOpened(slack);
-    actionAuthSnyk(slack, this.expressApp);
-    actionConfigSnyk(slack, this.expressApp);
+    actionAuthSnyk(slack);
+    actionConfigSnyk(slack);
 
     new SnykCommand(slack);
-
-
-    //   // await respond(`${command.text}`);
-    // });
-    // slack.use(expressSession({ secret: uuidv4(), resave: false, saveUninitialized: true }));
 
     return slack;
   }
@@ -183,19 +204,33 @@ export class Snlack {
               slackEnterpriseId: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterprise.id : undefined : undefined,
               slackEnterpriseUrl: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterpriseUrl : undefined : undefined,
             };
-
             let appInstallData: Installation = installation;
 
-            return db.dbWriteSlackInstallEntries(userInstallData, appInstallData);
+            // @TODO
+            // sessionStorage.setItem('slackInstallUserId', installation.user.id);
+            // console.log('session storage?', sessionStorage.getItem('slackInstallUserId'));
+
+            // this.setupPassport(this.state.get('slackUid'));
+
+
+            const writer = await db.dbWriteSlackInstallEntries(userInstallData, appInstallData);
+
+            // @ts-ignore
+            // console.fn.exit('Exiting storeInstallation()...');
+            return writer;
 
           } catch (error) {
             console.log('Error saving Slack App installation data', error);
             throw new Error(`Failed saving installation data to installationStore: ${error}`);
           }
         },
-        // takes in an installQuery as an argument
-        // installQuery = {teamId: 'string', enterpriseId: 'string', userId: 'string', conversationId: 'string', isEnterpriseInstall: boolean};
-        // returns installation object from database
+        /**
+         * Takes in an `InstallQuery` as an argument
+         * returns an `Installation` object from database
+         *
+         * @TODO Figure out this need for ts-ignore.
+         *
+         */
         // @ts-ignore
         fetchInstallation: async (installQuery) => {
           try {
@@ -204,7 +239,13 @@ export class Snlack {
               return await db.dbReadEntry({ table: 'slackAppInstalls', key: 'slackEnterpriseId', value: installQuery.enterpriseId });
             }
             if (typeof installQuery.teamId !== 'undefined') {
-              return await db.dbReadEntry({ table: 'slackAppInstalls', key: 'team.id', value: installQuery.teamId });
+
+              const entry: Installation = await db.dbReadEntry({ table: 'slackAppInstalls', key: 'team.id', value: installQuery.teamId }) as Installation;
+              // sessionStorage.setItem('slackInstallUserId', entry.user.id);
+              // console.log('session storage?', sessionStorage.getItem('slackInstallUserId'));
+              state.changeUser(entry.user.id);
+              return entry;
+
             }
           } catch (error) {
             console.log('Got an error fetching installation data: ', error);
@@ -236,17 +277,22 @@ export class Snlack {
 
   private initRoutes(controllers: Controller[]) {
 
+    // controllers.push();
+
     controllers.forEach((controller: Controller) => {
       // @TODO - hmm....
       this.expressApp.use('/', controller.router);
     })
 
+
+
   }
 
 
   private listen = async(port: number) => {
-    await this.app.start(port || process.env.PORT || 3000);
-    console.log('Bolt on.');
+    const runPort: number = port || parseInt(process.env.Port as string) || 3000;
+    await this.app.start(runPort);
+    console.log(`\x1b[33m⚡Bolt\x1b[32m application up and running on port \x1b[36m${runPort}\x1b[0m...`);
   }
 
   private initGlobalMiddleware() {
@@ -272,7 +318,7 @@ export class Snlack {
       max: 100, // limit each IP to 100 requests per windowMs
     });
     this.expressApp.use(limiter);
-    this.setupPassport();
+    this.setupPassport(this.state);
   }
 
   /**
@@ -283,9 +329,9 @@ export class Snlack {
     this.expressApp.use(requestError());
   }
 
-  private setupPassport = () => {
+  public setupPassport = (state: any) => {
     console.log(`Initializing Passport.`);
-    passport.use(getSnykOAuth2());
+    passport.use(getSnykOAuth2(state));
     this.expressApp.use(passport.initialize());
     this.expressApp.use(passport.session());
     passport.serializeUser((user: Express.User, done) => {
@@ -303,8 +349,8 @@ export class Snlack {
 // ------------------------------------------------------------------------------
 new Snlack([
   new AppIndexController(),
-  new SnykPreAuthController(),
   new SnykAuthController(),
+  new SnykPreAuthController(),
   // @ts-ignore
   new SnykAuthCallbackController(this.app, this.expressApp),
 ], parseInt(process.env.PORT));

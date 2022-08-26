@@ -10,10 +10,8 @@ import { refreshTokenReqInterceptor, refreshTokenRespInterceptor } from './axios
  * @param {APIVersion} version API version to call
  * @returns {AxiosInstance}
  */
-export function callSnykApi(tokenType: string, token: string, version: SnykAPIVersion): AxiosInstance {
+export function callSnykApi(tokenType: string, token: string, version: SnykAPIVersion, slackCallerUid?: string): AxiosInstance {
   const contentType = version === SnykAPIVersion.V1 ? 'application/json' : 'application/vnd.api+json';
-
-  console.log(`called Snyk API ${version} with ${tokenType} token: ${token}.`)
 
   const axiosInstance = axios.create({
     baseURL: `${SNYK_API_BASE}/${version}`,
@@ -21,6 +19,9 @@ export function callSnykApi(tokenType: string, token: string, version: SnykAPIVe
       'Content-Type': contentType,
       Authorization: `${tokenType} ${token}`,
     },
+    params: {
+      slackCaller: slackCallerUid
+    }
   });
 
   axiosInstance.interceptors.request.use(refreshTokenReqInterceptor, Promise.reject);
