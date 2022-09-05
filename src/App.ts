@@ -22,6 +22,8 @@ import { requestError } from './lib/middleware';
 import { getSnykOAuth2, stateHandler, userState } from './lib/utils';
 import { fnEnter, fnError, fnExit } from "./lib/utils/consoleExtensions";
 import { Controller } from './types';
+import { actionProjectListOverflow } from './lib/actions/projectList';
+import { actionRefreshProjects } from './lib/actions/projectsRefresh';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -37,17 +39,9 @@ export const SNYK_API_BASE = 'https://api.snyk.io';
 export const SNYK_APP_BASE = 'https://app.snyk.io';
 
 // Extend console.
+// ------------------------------------------------------------------------------
+// @TODO - Put this elsewhere.
 Object.defineProperties(console, {
-  // fn: {
-  //   value: {
-  //     enter: {
-  //       value: fnEnter,
-  //     },
-  //     exit: {
-  //       value: fnExit,
-  //     }
-  //   }
-  // }
   enter: {
     value: fnEnter
   },
@@ -80,8 +74,9 @@ const slackScopes: string[] = [
   'app_mentions:read'
 ];
 
-console.log('slack client id:', slackClientId);
-console.log('slack client secret:', slackClientSecret);
+// Initialize the simple state toy.
+// ------------------------------------------------------------------------------
+// This is global so everything shares it.
 export const state = new Proxy(userState, stateHandler);
 
 // Application class definition
@@ -159,8 +154,10 @@ export class Snlack {
     });
 
     eventAppHomeOpened(slack);
+    actionRefreshProjects(slack);
     actionAuthSnyk(slack);
     actionConfigSnyk(slack);
+    actionProjectListOverflow(slack);
 
     new SnykCommand(slack);
 
@@ -195,6 +192,9 @@ export class Snlack {
       // installationStore: new FileInstallationStore(),
       installationStore: {
         storeInstallation: async (installation) => {
+          // @ts-ignore
+          // console.fn.enter('Entering storeInstallation()...');
+          // fnEnter('Entering storeInstallation()...');
           try {
             let userInstallData: SnlackUser = {
               slackUid: installation.user.id,
@@ -203,6 +203,11 @@ export class Snlack {
               slackTeamName: !installation.isEnterpriseInstall ? installation.team?.name : undefined,
               slackEnterpriseId: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterprise.id : undefined : undefined,
               slackEnterpriseUrl: installation.isEnterpriseInstall ? typeof installation.enterprise !== 'undefined' ? installation.enterpriseUrl : undefined : undefined,
+              appSettings: {
+                webhookCreated: false,
+                severityFilter: ['critical'],
+                projectFilter: [],
+              }
             };
             let appInstallData: Installation = installation;
 
@@ -233,6 +238,8 @@ export class Snlack {
          */
         // @ts-ignore
         fetchInstallation: async (installQuery) => {
+          // console.fn.enter('Entering fetchInstallation()...');
+          // console.fn.enter();
           try {
             if (installQuery.isEnterpriseInstall && typeof installQuery.enterpriseId !== 'undefined') {
               // org wide app installation lookup
