@@ -1,5 +1,7 @@
 import {HomeView} from '@slack/bolt';
 import { v4 as uuid4 } from 'uuid';
+import { readFromDb, getDbEntryIndex } from '../utils';
+import { appSettingsFormBlocks } from './appHomeConfig';
 
 // Updates the contents of the Home tab.
 // We can use this for modifying the details / content presented to users based
@@ -22,7 +24,7 @@ export class SlackHomeView implements HomeView {
     console.log('Updating Home view...');
     let blocks: any[] = this.homeBlocksPreSnyk(this.user);
     if (snykAuth === true) {
-      blocks = this.homeBlocksPostSnyk(this.user);
+      blocks = this.homeBlocksPostSnyk(this.user).concat(appSettingsFormBlocks as []);
     }
 
     return {
@@ -34,7 +36,6 @@ export class SlackHomeView implements HomeView {
 
   public createHome = async({data}: {data?: string}) => {
     console.log('User looking at home: ', this.user);
-    // @TODO
     // This is where we'll want to look up whether or not the user has
     // authenticated with Snyk. If they have, we should show them the Remove
     // Integration button and provide any other settings we might want to make
@@ -45,19 +46,39 @@ export class SlackHomeView implements HomeView {
     //   if ( db.dbLookup(user).snykAuthToken ) {
     //       snykAuth = true;
     //   }
+    try {
+      const db = await readFromDb();
+      const userDbEntryIndex = await getDbEntryIndex({ table: 'users', key: 'slackUid', value: this.user });
+      // @ts-ignore
+      const userDbEntry = typeof userDbEntryIndex !== 'boolean' ? db.users[userDbEntryIndex] : false;
 
-    if(data) {
-      // Should we perhaps provide App options here?
-      // something like... db.push(`/${user}/data[]`, data, true);
+      let userView;
+
+      // If this user isn't in the db yet, how are they here? If they are and
+      // don't have a snykUid, they must not have authenticated with Snyk yet.
+      if (!userDbEntry || typeof userDbEntry.snykUid === 'undefined') {
+        userView = this.updateView(false);
+      } else {
+        userView = this.updateView(true);
+      }
+
+      if(data) {
+        // Should we perhaps provide App options here?
+        // something like... db.push(`/${user}/data[]`, data, true);
+      }
+
+      // const userView = this.updateView(false);
+
+      return {
+        user_id: this.user,
+        view: userView
+      }
+    } catch (error) {
+      console.error(`There was an error creating the App's Home view: ${error}`);
+      throw error;
+    } finally {
+      console.leave('Leaving createHome()...');
     }
-
-    const userView = this.updateView(false);
-
-    return {
-      user_id: this.user,
-      view: userView
-    }
-
     // return userView;
   };
 
