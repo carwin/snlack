@@ -11,7 +11,7 @@ export interface SnykProject {
   readOnly: boolean;
   testFrequency: string;
   totalDependencies: number;
-  issueCountBySeverity: SnykIssueSeverityCount;
+  issueCountsBySeverity: SnykIssueSeverityCount;
   imageId: string;
   imageTag: string;
   imageBaseImage: string;
@@ -21,10 +21,10 @@ export interface SnykProject {
   lastTestedDate: string | Date;
   owner: SnykUserReference | null;
   browseUrl: string;
-  importingUser: SnykUserReference;
+  importingUser: SnykUserReference | null;
   isMonitored: boolean;
   branch: string | undefined;
   targetReference: string;
   tags: SnykTag[];
-  attributes: SnykProjectAttributes[];
+  attributes: SnykProjectAttributes;
 }

@@ -1,5 +1,5 @@
 export interface SnykProjectAttributes {
-  criticality: string[];
-  environment: string[];
-  lifecycle: string[];
+  criticality?: string[];
+  environment?: string[];
+  lifecycle?: string[];
 }

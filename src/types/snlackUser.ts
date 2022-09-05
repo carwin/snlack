@@ -17,11 +17,16 @@ export interface SnlackUser {
   snykUid?: string;
   snykAuthDate?: Date;
   snykOrgs?: SnykOrg[];
-  snykProjects?: SnykProject[];
+  // snykProjects?: SnykProject[];
   snykAccessToken?: string;
   snykTokenExpiry?: number;
   snykScopes?: string;
   snykTokenType?: string;
   snykRefreshToken?: string;
   snykNonce?: string;
+  appSettings: {
+    webhookCreated: boolean;
+    severityFilter: ['critical' | 'high' | 'medium' | 'low'];
+    projectFilter: string[],
+  }
 }
