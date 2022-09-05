@@ -13,7 +13,8 @@ export class EncryptDecrypt {
 
   constructor(secret: string) {
     // Uses the passed secret or one from environmental variables
-    this.secret = secret || (process.env[Envars.SnykEncryptionSecret] as string);
+    this.secret = secret || process.env.SNYK_ENCRYPTION_SECRET as string;
+    // this.secret = secret || (process.env[Envars.SnykEncryptionSecret] as string);
     // Initialize the Cryptr instance with the secret
     this.cryptr = new Cryptr(this.secret);
   }

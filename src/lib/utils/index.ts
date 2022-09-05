@@ -7,3 +7,4 @@ export * from './refreshSnykAuthToken'
 export * from './snykOAuth2Strategy'
 export * from './getSnykProjects'
 export * from './state'
+export * from './createProjObj';

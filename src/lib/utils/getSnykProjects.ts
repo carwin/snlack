@@ -1,35 +1,55 @@
 import { SnykAPIVersion, SnykOrg, SnykProject, SnlackUser } from '../../types';
 import { callSnykApi } from './callSnykApi';
+import jwt_decode from 'jwt-decode';
+import { EncryptDecrypt } from './encryptDecrypt';
 import { dbReadEntry, dbReadNestedEntry } from './';
 
-export const getSnykProjects = async (slackCallerUid: string, tokenType: string, accessToken: string, orgId: string): Promise<{ org: SnykOrg, projects: SnykProject[] }> => {
-  console.log('getting Snyk projects for user');
+interface V1ApiOrg {
+  id: string;
+  name: string;
+}
 
+
+export const getSnykProjects = async (slackCallerUid: string, tokenType: string, accessToken: string, orgId: string): Promise<{ org: SnykOrg, projects: SnykProject[] }> => {
+  console.enter('Entering getSnykProjects()....\n Getting Snyk projects for user.');
+  console.log(`args were: slackcalleruid - ${slackCallerUid}\ntokentype ${tokenType}\naccesstoken - ${accessToken}\norgId - ${orgId}`);
+  const ed = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
+
+  console.log('access token at getSnykProjects: ', accessToken);
+  // console.log('access token at getSnykProjects with decrypt string: ', ed.decryptString(accessToken));
   try {
     const result = await callSnykApi(
       tokenType,
+      // ed.decryptString(accessToken), // @TODO encrypt / decrypt is behaving problematically.
       accessToken,
       SnykAPIVersion.V1,
     )({
       method: 'GET',
       url: `/org/${orgId}/projects`,
-      params: {
-        slackCaller: slackCallerUid
-      }
     });
 
-    console.log('result of getSnykProjects:', result.data);
+    console.problem(`result of getSnykProjects: ${result.data}`);
     return result.data;
-
-    // {
+      // return result.data;
+    // return {
       // Use v1 until rest endpoint supports indirect org access
-      //orgs: result.data.data.map((org: RestApiOrg) => ({ id: org.id, name: org.attributes.name })),
-      // orgs: result.data.orgs.map((org: V1ApiOrg) => ({ id: org.id, name: org.name })),
+      // orgs: result.data.data.map((org: RestApiOrg) => ({ id: org.id, name: org.attributes.name })),
+      // projects: result.data.orgs.map((project: any) => ({ id: org.id, name: org.name })),
     // };
-  } catch (error) {
-    console.error('Oops');
-    // console.error('Error fetching project info: ' + error);
-    // throw error;
+
+  }
+
+  catch (error) {
+    console.error('Oops - problem in getSnykProjects()');
+    // @ts-ignore
+    console.log(error.response.data);
+    // @ts-ignore
+    console.log(error.response.status);
+    // @ts-ignore
+    console.log(error.response.headers);
+    // @ts-ignore
+    console.log(error.request.headers);
+  //   // throw error;
     throw 'oops';
   }
 

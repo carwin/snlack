@@ -12,8 +12,8 @@ const snykTokenUri = '/oauth2/token';
  * @param {String} refreshToken required to refresh the user auth token when it expires
  * @returns Promise that will return data or throw an error
  */
-export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAuthData> => {
-  console.log('Entering refreshSnykAuthToken()...');
+export const refreshSnykAuthToken = async(refreshToken: string): Promise<SnykAuthData> => {
+  console.enter('Entering refreshSnykAuthToken()...');
   const querystring = qs.stringify({
     grant_type: SnykOAuth2GrantType.RefreshToken,
     client_id: process.env.SNYK_CLIENT_ID,
@@ -30,6 +30,7 @@ export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAu
       url: `${SNYK_API_BASE}${snykTokenUri}`,
       data: querystring,
     });
+    console.log('RESULT', result);
     console.log('result of refresh', result.data);
 
     console.log('Returning from refreshSnykAuthToken()...');
@@ -38,6 +39,7 @@ export const refreshSnykAuthToken = async (refreshToken: string): Promise<SnykAu
     if (axios.isAxiosError(error) && error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
+      console.log(error);
       console.log(error.response.data);
     }
     throw error;
