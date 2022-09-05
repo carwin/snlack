@@ -3,6 +3,8 @@ import { dbPath } from '../../App';
 import { DB, DbTableEntry, DbInteractionFunc, SnykAuthData, SlackInstallData, SnlackUser } from '../../types';
 import { Installation } from '@slack/bolt';
 
+// @TODO: There's quite a bit of cleaning up to do - I've been hacking my way through random ideas.
+
 /**
  * Read data from DB, you could use any database of your
  * choice, but we are using lightweight lowdb.
@@ -145,7 +147,7 @@ export const dbReadNestedEntry: DbInteractionFunc = async ({ table, nestedTable,
 
 }
 
-export const dbWriteEntry: DbInteractionFunc = async ({ table, data }): Promise<void> => {
+export const dbWriteEntry: DbInteractionFunc = async ({ table, data, index }): Promise<void> => {
   console.enter('Entering dbWriteEntry()...');
   if (typeof data === 'undefined') throw 'A valid data object is required when calling dbWriteEntry().';
   try {
@@ -153,32 +155,39 @@ export const dbWriteEntry: DbInteractionFunc = async ({ table, data }): Promise<
     const adapter = new JSONFile(dbPath);
     const db = new Low(adapter);
 
-    const lookupKey1: string | undefined = 'slackUid';
-    const lookupKey2: string | undefined = 'snykUid';
-    const lookupVal1: string | undefined = ('slackUid' in data) ? data.slackUid : undefined;
-    const lookupVal2: string | undefined = ('snykUid' in data) ? data.snykUid : undefined;
-    let existingEntryIndex: number | unknown;
-    // See if there's a match.
-    existingEntryIndex = await getDbEntryIndex({ table, key: lookupKey1, value: lookupVal1 });
-    console.log('try 1: ', existingEntryIndex);
-    // Try again
-    if (typeof existingEntryIndex === 'undefined') {
-      existingEntryIndex = await getDbEntryIndex({ table, key: lookupKey2, value: lookupVal2 })
-      console.log('try 2: ', existingEntryIndex);
-    }
-
-    console.log(`While preparing to write to db, this is the existingEntryIndex value: ${existingEntryIndex}`);
-
-    if (typeof existingEntryIndex !== 'undefined') {
+    if (typeof index === 'number') {
       for (let k in data) {
         // @ts-ignore
-        existingData[table][existingEntryIndex][k] = data[k as keyof SnlackUser | keyof SnykAuthData | keyof Installation];
+        existingData[table][index][k] = data[k as keyof SnlackUser | keyof SnykAuthData | keyof Installation];
       }
     } else {
-      if (typeof data !== 'undefined') {
-        // @TODO: I can't figure out this TS error.
-        // @ts-ignore
-        existingData[table].push(data);
+      const lookupKey1: string | undefined = 'slackUid';
+      const lookupKey2: string | undefined = 'snykUid';
+      const lookupVal1: string | undefined = ('slackUid' in data) ? data.slackUid : undefined;
+      const lookupVal2: string | undefined = ('snykUid' in data) ? data.snykUid : undefined;
+      let existingEntryIndex: number | unknown;
+      // See if there's a match.
+      existingEntryIndex = await getDbEntryIndex({ table, key: lookupKey1, value: lookupVal1 });
+      console.log('try 1: ', existingEntryIndex);
+      // Try again
+      if (typeof existingEntryIndex === 'undefined') {
+        existingEntryIndex = await getDbEntryIndex({ table, key: lookupKey2, value: lookupVal2 })
+        console.log('try 2: ', existingEntryIndex);
+      }
+
+      console.log(`While preparing to write to db, this is the existingEntryIndex value: ${existingEntryIndex}`);
+
+      if (typeof existingEntryIndex !== 'undefined') {
+        for (let k in data) {
+          // @ts-ignore
+          existingData[table][existingEntryIndex][k] = data[k as keyof SnlackUser | keyof SnykAuthData | keyof Installation];
+        }
+      } else {
+        if (typeof data !== 'undefined') {
+          // @TODO: I can't figure out this TS error.
+          // @ts-ignore
+          existingData[table].push(data);
+        }
       }
     }
 
@@ -249,7 +258,7 @@ export const dbWriteSlackInstallEntries = async (userEntry: SnlackUser, installE
  * Looks up an entry and returns its index in the lowdb array it exists in.
  **/
 export const getDbEntryIndex: DbInteractionFunc = async({ table, key, value }): Promise<number | void> => {
-  console.enter('Entering getDbEntryIndex()...\n\nFinding entry where ${key} === ${value}');
+  console.enter(`Entering getDbEntryIndex()...\n\n Finding entry where ${key} === ${value}`);
 
   if (key === undefined) return;
   let matchedIndex: number | undefined;
@@ -285,7 +294,10 @@ export const getDbEntryIndex: DbInteractionFunc = async({ table, key, value }): 
   // }
 
   console.log(`Before returning getDbEntryIndex had this matchedIndex: ${matchedIndex}`);
-  if (typeof matchedIndex !== 'undefined') return matchedIndex;
+  console.log(`Matched index type = ${typeof matchedIndex}`);
+  if (typeof matchedIndex !== 'undefined') {
+    return matchedIndex;
+  }
   // return matchedIndex;
 }
 
@@ -304,34 +316,45 @@ export const dbDeleteEntry: DbInteractionFunc = async ({ table, key, value }): P
   console.log(`Looking for '${value}' on '${key}'...`);
   const dbData = await readFromDb();
   const adapter = new JSONFile<DB>(dbPath);
-  const db = new Low<DB>(adapter);
+  const db = new Low(adapter);
   // await db.read();
 
   if (dbData && dbData[table]) {
     if (typeof key !== 'undefined' && typeof value !== 'undefined') {
-      try {
-        // Declare the variable we'll use to return the results of the read.
-        dbData[table].map((entry: SnykAuthData | Installation | SnlackUser, index) => {
-          // Convert key to a string to be safe.
-          const lookupKey = key.toString();
-          // Handle nested object keys
-          // @TODO: I don't understand why `boolean` isn't a valid function return type.
-          lookupKey.split('.').reduce( (prev: any, curr: any): boolean | SnykAuthData | Installation | SnlackUser => {
-            if (prev[curr] === value) {
-              console.log(`Found the requested entry: ${entry}. Deleting ${table}[${index}]`);
-              // @TODO: - when the hell would it be null if we're here?
-              // @ts-ignore
-              db.data[table].splice(index, 1);
-              db.write();
-            }
-            return prev[curr];
-          }, entry);
+      // @ts-ignore
+      if (dbData[table].length === 1) {
+        // @ts-ignore
+        dbData[table] = [];
+      } else {
 
-        });
+        try {
+          // Declare the variable we'll use to return the results of the read.
+          dbData[table].map((entry: any, index) => {
+            // Convert key to a string to be safe.
+            const lookupKey = key.toString();
+            // Handle nested object keys
+            // @TODO: I don't understand why `boolean` isn't a valid function return type.
+            lookupKey.split('.').reduce( (prev: any, curr: any): boolean | SnykAuthData | Installation | SnlackUser => {
+              if (prev[curr] === value) {
+                console.log(`Found the requested entry: ${entry}. Deleting ${table}[${index}]`);
+                // @TODO: - when the hell would it be null if we're here?
+                // @ts-ignore
+                db.data[table].splice(index, 1);
+              }
+              return prev[curr];
+            }, entry);
 
-      } catch (error) {
-        throw new Error(`Error mapping table entries in dbDeleteEntry(): ${error}`);
+          });
+
+        } catch (error) {
+          console.error(`Error mapping table entries in dbDeleteEntry(): ${error}`);
+        }
       }
+
+      // @ts-ignore;
+      db.data = dbData;
+      db.write();
+
     } else {
       throw new Error('Cannot read an entry from the database without a lookup key and comparison value.');
     }
