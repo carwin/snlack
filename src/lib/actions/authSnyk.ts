@@ -12,5 +12,6 @@ export const actionAuthSnyk = (slack: Slack) => {
   slack.action('auth_snyk', async ({ ack }) => {
     await ack();
   });
+
   console.leave(`Leaving actionConfigSnyk()...`);
 }

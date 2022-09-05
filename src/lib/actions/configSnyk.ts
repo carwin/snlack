@@ -1,6 +1,6 @@
 import { App as Slack } from '@slack/bolt';
 import { state } from '../../App';
-import { AppHomeConfigView } from '../views';
+import { AppHomeConfigViewSnykModal } from '../views';
 
 /**
  * Handles the `config_snyk` action.
@@ -24,7 +24,7 @@ export const actionConfigSnyk = (slack: Slack) => {
     state.changeUser(body.user.id);
 
     try {
-      const snykConfigView: AppHomeConfigView = new AppHomeConfigView({user: body.user.id, snykAuthStatus: false});
+      const snykConfigView: AppHomeConfigViewSnykModal = new AppHomeConfigViewSnykModal({user: body.user.id, snykAuthStatus: false});
       // @ts-ignore
       const view = snykConfigView.view;
 
