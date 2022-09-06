@@ -41,50 +41,6 @@ export const getSnykProjects = async(slackCallerUid: string): Promise<unknown[]>
   return Promise.all(requests);
 }
 
-// export const getSnykProjects = async (slackCallerUid: string, tokenType: string, accessToken: string, orgId: string): Promise<{ org: SnykOrg, projects: SnykProject[] }> => {
-//   console.enter('Entering getSnykProjects()....\n Getting Snyk projects for user.');
-//   console.log(`args were: slackcalleruid - ${slackCallerUid}\ntokentype ${tokenType}\naccesstoken - ${accessToken}\norgId - ${orgId}`);
-
-//   // Instantiate a new EncryptDecrypt to use for interacting with our stored
-//   // secret content.
-//   // const ed = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
-
-//   try {
-//     const result = await callSnykApi(
-//       tokenType,
-//       accessToken, // @TODO encrypt / decrypt is behaving problematically. Let's assume we're being provided an unencrypted string.
-//       SnykAPIVersion.V1,
-//     )({
-//       method: 'GET',
-//       url: `/org/${orgId}/projects`,
-//     });
-
-//     console.problem(`result of getSnykProjects: ${result.data}`);
-//     return result.data;
-//       // return result.data;
-//     // return {
-//       // Use v1 until rest endpoint supports indirect org access
-//       // orgs: result.data.data.map((org: RestApiOrg) => ({ id: org.id, name: org.attributes.name })),
-//       // projects: result.data.orgs.map((project: any) => ({ id: org.id, name: org.name })),
-//     // };
-
-//   }
-
-//   catch (error: unknown) {
-
-//     if (axios.isAxiosError(error) && error.response) {
-//       console.log(error.response.data);
-//       console.log(error.response.status);
-//       console.log(error.response.headers);
-//     }
-
-//     throw 'Oops - There was an error in getSnykProjects()!';
-//   }
-
-// }
-
-
-
 /**
  * Given a Snyk Org name, return the Org's ID if it is present in the local store.
  *

@@ -52,7 +52,7 @@ export async function refreshTokenReqInterceptor(request: AxiosRequestConfig): P
  * being rotated in an emergency.
  *
  */
-export async function refreshTokenRespInterceptor(error: AxiosError): Promise<AxiosError> {
+export const refreshTokenRespInterceptor = async(error: AxiosError): Promise<AxiosError> => {
   console.enter('Entering refreshTokenRespInterceptor()...');
   const status = error.response ? error.response.status : null;
 
