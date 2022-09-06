@@ -4,6 +4,9 @@ import { projectDetailsMsg } from '../messages';
 import { dbReadEntry, createProjObj } from '../utils';
 import { SnlackUser, DbTableEntry, SnykProject } from '../../types';
 
+/**
+ * Handles the interaction of the overflow menu on project list items.
+ */
 export const actionProjectListOverflow = (slack: Slack) => {
   slack.action('project_list_overflow_action', async ({ ack, body, respond, payload }) => {
     console.enter('Entering actionProjectListOverflow...');

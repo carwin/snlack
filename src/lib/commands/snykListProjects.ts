@@ -23,9 +23,16 @@ export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: R
   // `/snyk project` command entrypoint.
   // ---------------------------------------------------------------------------
   if (typeof subcmd === 'undefined') {
+    // @TODO return the help command.
     await respond('You probably meant to pass a parameter like `list`. Try this:\n \`\`\`/snyk project list\`\`\`\nor\n\`\`\`/snyk project list \'My Org Name\'\`\`\`');
   }
 
+  // ---------------------------------------------------------------------------
+  // Return the help response
+  // ---------------------------------------------------------------------------
+  else if (subcmd === 'list' && param === 'help') {
+    // @TODO list command help.
+  }
 
   // ---------------------------------------------------------------------------
   // List all projects, regardless of Org.
@@ -34,17 +41,33 @@ export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: R
     let projectCollection: SnykProject[] = [];
     const existingUserEntry: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: rawCommand.user_id }) as SnlackUser;
 
-    if (typeof existingUserEntry === 'undefined' || typeof existingUserEntry.snykOrgs === 'undefined') throw 'No entry for calling user, try authenticating with Snyk from the App config.';
+    // @TODO - Give the user an indication something went awry.
+    if (typeof existingUserEntry === 'undefined') {
+      console.log('No entry for calling user, try authenticating with Snyk from the App config.');
+      await respond ({
+        replace_original: false,
+        delete_original: false,
+        response_type: 'ephemeral',
+        text: `It looks like there isn't any data for you. Try authenticating with Snyk from the App's configuration page and trying again.`
+      });
+    }
 
-    existingUserEntry.snykOrgs.map((org) => {
-      projectCollection = projectCollection.concat(org.projects);
-    });
+    if (typeof existingUserEntry !== 'undefined') {
+      // WTF TypeScript, we're in an actual condition that ensures the below
+      // code will never run if existingUserEntry is undefined, how is this a
+      // complaint...
+      //
+      // @ts-ignore
+      existingUserEntry.snykOrgs.map((org) => {
+        projectCollection = projectCollection.concat(org.projects);
+      });
+
+    }
 
     const msg = await projectListAllMsg(projectCollection, rawCommand.user_id);
 
     await respond(msg as RespondArguments);
   }
-
 
   // ---------------------------------------------------------------------------
   // List all the projects within Org (param).
@@ -93,8 +116,9 @@ export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: R
           // requested via `param`.
           desiredOrgIndex = existingEntry.snykOrgs.findIndex(orgNameMatch) || undefined;
 
+          // @TODO - No need to write if we're only calling the API during user action.
           // Write it to the "db" file.
-          await dbWriteEntry({ table: 'users', data: existingEntry });
+          // await dbWriteEntry({ table: 'users', data: existingEntry });
 
           // Only continue if the desiredOrgIndex has been found.
           if (typeof desiredOrgIndex === 'number') {
