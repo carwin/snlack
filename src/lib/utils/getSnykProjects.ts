@@ -4,74 +4,110 @@ import jwt_decode from 'jwt-decode';
 import { EncryptDecrypt } from './encryptDecrypt';
 import { dbReadEntry, dbReadNestedEntry } from './';
 
+import axios from 'axios';
+
 interface V1ApiOrg {
   id: string;
   name: string;
 }
 
 
-export const getSnykProjects = async (slackCallerUid: string, tokenType: string, accessToken: string, orgId: string): Promise<{ org: SnykOrg, projects: SnykProject[] }> => {
-  console.enter('Entering getSnykProjects()....\n Getting Snyk projects for user.');
-  console.log(`args were: slackcalleruid - ${slackCallerUid}\ntokentype ${tokenType}\naccesstoken - ${accessToken}\norgId - ${orgId}`);
-  const ed = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
+export const getSnykProjects = async(slackCallerUid: string): Promise<unknown[]> => {
+  const data = await dbReadEntry({table: 'users', key: 'slackUid', value: slackCallerUid }) as SnlackUser;
 
-  console.log('access token at getSnykProjects: ', accessToken);
-  // console.log('access token at getSnykProjects with decrypt string: ', ed.decryptString(accessToken));
-  try {
-    const result = await callSnykApi(
-      tokenType,
-      // ed.decryptString(accessToken), // @TODO encrypt / decrypt is behaving problematically.
-      accessToken,
-      SnykAPIVersion.V1,
-    )({
-      method: 'GET',
-      url: `/org/${orgId}/projects`,
-    });
+  if (!data || typeof data === 'undefined') return [];
 
-    console.problem(`result of getSnykProjects: ${result.data}`);
-    return result.data;
-      // return result.data;
-    // return {
-      // Use v1 until rest endpoint supports indirect org access
-      // orgs: result.data.data.map((org: RestApiOrg) => ({ id: org.id, name: org.attributes.name })),
-      // projects: result.data.orgs.map((project: any) => ({ id: org.id, name: org.name })),
-    // };
+  const eD = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
+  const access_token = eD.decryptString(data?.snykAccessToken as string);
+  const token_type = data?.snykTokenType;
 
-  }
+  // Call the axios instance configured for Snyk API v1.
+  const requests = (data?.snykOrgs ?? []).map((org) =>
+    callSnykApi(token_type as string, access_token, SnykAPIVersion.V1)
+      .post(`/org/${org.id}/projects`)
+      .then((project): SnykOrg => ({
+        name: org.name,
+        id: org.id,
+        projects: project.data.projects || [],
+      }))
+      .catch((error) => {
 
-  catch (error) {
-    console.error('Oops - problem in getSnykProjects()');
-    // @ts-ignore
-    console.log(error.response.data);
-    // @ts-ignore
-    console.log(error.response.status);
-    // @ts-ignore
-    console.log(error.response.headers);
-    // @ts-ignore
-    console.log(error.request.headers);
-  //   // throw error;
-    throw 'oops';
-  }
+        console.log('callSnykApi from getSnykProjects() Promise has been rejected.');
 
+        console.log('Maybe there was an error?', error);
+      }),
+                                             );
+
+  return Promise.all(requests);
 }
+
+// export const getSnykProjects = async (slackCallerUid: string, tokenType: string, accessToken: string, orgId: string): Promise<{ org: SnykOrg, projects: SnykProject[] }> => {
+//   console.enter('Entering getSnykProjects()....\n Getting Snyk projects for user.');
+//   console.log(`args were: slackcalleruid - ${slackCallerUid}\ntokentype ${tokenType}\naccesstoken - ${accessToken}\norgId - ${orgId}`);
+
+//   // Instantiate a new EncryptDecrypt to use for interacting with our stored
+//   // secret content.
+//   // const ed = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
+
+//   try {
+//     const result = await callSnykApi(
+//       tokenType,
+//       accessToken, // @TODO encrypt / decrypt is behaving problematically. Let's assume we're being provided an unencrypted string.
+//       SnykAPIVersion.V1,
+//     )({
+//       method: 'GET',
+//       url: `/org/${orgId}/projects`,
+//     });
+
+//     console.problem(`result of getSnykProjects: ${result.data}`);
+//     return result.data;
+//       // return result.data;
+//     // return {
+//       // Use v1 until rest endpoint supports indirect org access
+//       // orgs: result.data.data.map((org: RestApiOrg) => ({ id: org.id, name: org.attributes.name })),
+//       // projects: result.data.orgs.map((project: any) => ({ id: org.id, name: org.name })),
+//     // };
+
+//   }
+
+//   catch (error: unknown) {
+
+//     if (axios.isAxiosError(error) && error.response) {
+//       console.log(error.response.data);
+//       console.log(error.response.status);
+//       console.log(error.response.headers);
+//     }
+
+//     throw 'Oops - There was an error in getSnykProjects()!';
+//   }
+
+// }
+
+
 
 /**
  * Given a Snyk Org name, return the Org's ID if it is present in the local store.
  *
  * @example
- * const orgId = await getSnykOrgIdByName('Kuberneato Mosquito');
+ * const orgId = await getSnykOrgIdByName('<Slack User ID>', 'Kuberneato Mosquito');
  * console.log(orgId); // => f0ddsxxx-pdpp-42ae-aaa0-3200bedbdd7f
  **/
-export const getSnykOrgIdByName = async (orgName: string): Promise<string | false> => {
+export const getSnykOrgIdByName = async (slackUid: string, orgName: string): Promise<string | false> => {
   // @TODO another TS signature definition issue.
   // @ts-ignore
-  const lookup: SnlackUser | false = await dbReadNestedEntry({ table: 'users', nestedTable: 'snykOrgs', key: 'name', value: orgName });
-  console.log('Lookup found ', lookup);
-  let lookupId: string | false = false;
-  if (typeof lookup !== 'boolean' && typeof lookup?.snykOrgs !== 'undefined') {
-    lookup.snykOrgs.map( (org: SnykOrg) => {
-      if (org.name === orgName) lookupId = org.id;
-    })
-  }
-  return lookupId;
+  // const lookup: SnlackUser | false = await dbReadNestedEntry({ table: 'users', nestedTable: 'snykOrgs', key: 'name', value: orgName });
+  const data = await dbReadEntry({ table: 'users', key: 'slackUid', value: slackUid }) as SnlackUser;
+
+  if (!data.snykOrgs) throw 'This user has no Snyk organizations to use for lookup.';
+
+  let orgId: string | undefined;
+
+  data.snykOrgs.map((org) => {
+    if (org.name === orgName) orgId = org.id;
+  });
+
+  // if (typeof orgId === 'undefined' || !orgId) return `A Snyk organization matching ${orgName} could not be found in the user's entry.` as string;
+  if (typeof orgId === 'undefined' || !orgId) return false;
+
+  return orgId;
 }

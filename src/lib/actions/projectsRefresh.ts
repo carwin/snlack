@@ -1,20 +1,17 @@
 import { App as Slack, RespondArguments } from '@slack/bolt';
 import { readFromDb, dbReadEntry, dbReadNestedEntry, dbWriteEntry, getSnykProjects } from '../utils';
 import { SnlackUser, SnykProject } from '../../types';
+import { state } from '../../App';
 
 export const actionRefreshProjects = async (slack: Slack) => {
   slack.action('projects_refresh', async({ ack, payload, body }) => {
     console.enter('Entering actionRefreshProjects()...');
-    console.log('payload value', payload);
-    console.log('maybe in the body?', body);
-    // @ts-ignore
     await ack();
+    state.changeUser(body.user.id);
 
     if (payload.type === 'button') {
       const parsedOrgIdFromValue = payload.value.split('--')[1];
 
-      // This would take too long, really need to re-think storage from the bottom-up.
-      // const orgSubEntry = await dbReadNestedEntry({ table: 'users', nestedTable: 'snykOrgs', key: 'id', value: parsedOrgIdFromValue});
 
       try {
         const dbData = await readFromDb();

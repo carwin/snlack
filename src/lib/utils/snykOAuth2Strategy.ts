@@ -31,18 +31,18 @@ export const getSnykOAuth2 = (state: any): SnykOAuth2Strategy => {
   console.enter('Entering getSnykOAuth2()...');
   const snykClientId = process.env.SNYK_CLIENT_ID as string;
   const snykClientSecret = process.env.SNYK_CLIENT_SECRET as string;
-  const callbackUrl = process.env.SNYK_REDIRECT_URI as string;
-  const scope = process.env.SNYK_SCOPES as string;
-  const nonce = uuid4();
+  const snykCallbackUrl = process.env.SNYK_REDIRECT_URI as string;
+  const snykScopes = process.env.SNYK_SCOPES as string;
+  const snykNonce = uuid4();
 
   console.log('-------');
   console.log('getSnykOAuth2() called:');
   console.log(`
 client id: ${snykClientId}
 client secret: ${snykClientSecret}
-callback url: ${callbackUrl}
-scope: ${scope}
-nonce: ${nonce}
+callback url: ${snykCallbackUrl}
+scope: ${snykScopes}
+nonce: ${snykNonce}
 auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
 `);
   console.log('-------');
@@ -68,8 +68,10 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
   // var slackUserId: string = state.slackUid;
   // console.log('sesh?', slackUserId);
 
-  const profileFunc: ProfileFunc = (accessToken: string): Promise<any> => {
-    return callSnykApi('bearer', accessToken, SnykAPIVersion.V1, state.slackUserId || undefined).get('/user/me');
+  const snykProfileFunc: ProfileFunc = (accessToken: string): Promise<any> => {
+    // return callSnykApi('bearer', accessToken, SnykAPIVersion.V1, state.slackUserId || undefined).get('/user/me');
+    return callSnykApi('bearer', accessToken, SnykAPIVersion.V1).get('/user/me');
+
   }
 
   return new SnykOAuth2Strategy(
@@ -78,13 +80,13 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
       tokenURL: `${SNYK_API_BASE}${snykTokenUri}`,
       clientID: snykClientId,
       clientSecret: snykClientSecret,
-      callbackURL: callbackUrl,
-      scope,
+      callbackURL: snykCallbackUrl,
+      scope: snykScopes,
       scopeSeparator: ' ',
       state: true,
       passReqToCallback: true,
-      nonce,
-      profileFunc,
+      nonce: snykNonce,
+      profileFunc: snykProfileFunc,
     },
     // @ts-ignore
     async function (
@@ -102,12 +104,15 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
          * by the Snyk App
          */
         // @ts-ignore
-        const slackUserId = state.slackUid || req.params.slackUserId || req.session.slackUserId;
+        // const slackUserId = state.slackUid || req.params.slackUserId || req.session.slackUserId;
+        const slackUserId = state.slackUid;
         const snykUserId = profile.data.id;
         console.log('params in the new strategy:', params);
         const decoded: JWT = jwt_decode(access_token);
-        if (nonce !== decoded.nonce) throw new Error('Nonce values do not match');
+        if (snykNonce !== decoded.nonce) throw new Error('Nonce values do not match');
         const { expires_in, scope, token_type } = params;
+
+        console.log('HERE ARE PARAMS?', params);
 
         /**
          * This function to get the orgs itself can be passed
@@ -136,19 +141,19 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
           snykScopes: scope,
           snykTokenType: token_type,
           snykRefreshToken: ed.encryptString(refresh_token),
-          snykNonce: nonce,
+          snykNonce,
         }
-        const storageObj_OG = {
-          date: new Date(),
-          snykUserId,
-          orgs,
-          access_token: ed.encryptString(access_token),
-          expires_in,
-          scope,
-          token_type,
-          refresh_token: ed.encryptString(refresh_token),
-          nonce,
-        }
+        // const storageObj_OG = {
+        //   date: new Date(),
+        //   snykUserId,
+        //   orgs,
+        //   access_token: ed.encryptString(access_token),
+        //   expires_in,
+        //   snykScopes,
+        //   token_type,
+        //   refresh_token: ed.encryptString(refresh_token),
+        //   snykNonce,
+        // }
 
         // if (dbEntry && typeof dbEntry.snykUid !== 'undefined') {
 
@@ -162,7 +167,7 @@ auth url: ${SNYK_APP_BASE}${authorizationUrl}?version=2021-08-11~experimental
         return done(error as Error, false);
       }
       console.log('returning done with null or a nonce');
-      return done(null, { nonce });
+      return done(null, { snykNonce });
     },
   );
 

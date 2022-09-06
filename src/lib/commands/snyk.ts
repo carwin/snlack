@@ -1,9 +1,7 @@
 import { App as Slack, AllMiddlewareArgs, SlackCommandMiddlewareArgs, RespondArguments } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
-import { dbDeleteEntry, dbWriteEntry, getDbEntryIndex, getSnykOrgIdByName, getSnykProjects, readFromDb } from '../utils';
-import db from 'lowdb';
-import { SnlackUser, SnykIssueSeverityCount } from '../../types';
-import { projectListMsg } from '../messages';
+import { dbDeleteEntry } from '../utils';
+import { snykListCommandHandler } from './snykListProjects';
 
 export interface CommandRegisterFn {
   (slack: Slack): Promise<any>;
@@ -72,133 +70,28 @@ export class SnykCommand extends Command {
     console.log('--------------------------');
     console.log();
 
+    const commandParts = {
+      cmd,
+      subcmd,
+      param,
+      param2,
+      param3
+    };
+
     switch(cmd) {
       case 'org':
         this.orgHandler(subcmd);
         break;
       case 'app':
         if (subcmd === 'del') {
-          // dbDeleteEntry({ table: 'users', key: 'user.id', value: 'U03SNLU01JA' });
           await dbDeleteEntry({ table: 'users', key: 'slackUid', value: 'U03SNLU01JA' });
         }
-      case 'project':
-        // `/snyk project` command entrypoint.
-        if (typeof subcmd === 'undefined') {
-          await respond('You probably meant to pass a parameter like `list`. Try this:\n \`\`\`/snyk project list\`\`\`\nor\n\`\`\`/snyk project list \'My Org Name\'\`\`\`');
-        }
-        //
-        // List all the projects within Org (param);
-        //
-        else if (subcmd === 'list' && typeof param !== 'undefined') {
-          // @ts-ignore
-          console.problem('Attempting to handle a project list command with a given Org.');
-          const orgId = await getSnykOrgIdByName(param);
-
-          try {
-            // See if there's an entry in the current lowdb file for a user that
-            // matches the user calling the command.
-            const existingEntryIndex: any = await getDbEntryIndex({ table: 'users', key: 'slackUid', value: command.user_id });
-
-            // If there is such an entry...
-            if (typeof existingEntryIndex !== 'undefined'
-              && typeof existingEntryIndex !== 'boolean') {
-              // Yoink the current db contents to peruse for projects.
-              const dbContent = await readFromDb();
-
-              // Since we know there's an existing entry, use its index in the
-              // users table. This could probably be more elegant, but we're
-              // just hacking for now.
-              const existingEntry = dbContent.users[existingEntryIndex];
-
-              if (typeof existingEntry.snykOrgs === 'undefined') throw `There was an error retrieving projects for ${param}. Namely, there are no Orgs at all...`;
-
-              // Figure out the requested Org's index within the user entry.
-              let entryOrgIndex: number | null = null;
-              existingEntry.snykOrgs.map((org, index) => {
-                if (org.id === orgId) entryOrgIndex = index;
-              });
-
-              // Throw an error if there's no matching Snyk organization
-              // attached to this user.
-              if (entryOrgIndex === null) throw `Could not find the requested Org in the list of Orgs this user may acces...`;
-
-
-              // If we not only have an entry for the current user, but that
-              // entry also contains an array of Snyk projects...
-              if (typeof existingEntry.snykOrgs[entryOrgIndex] !== 'undefined' && existingEntry.snykOrgs[entryOrgIndex].projects.length >= 1) {
-                // if (typeof existingEntry.snykProjects !== 'undefined' && existingEntry.snykProjects.length >= 1) {
-
-                // We already have projects locally.  Generate a Slack block
-                // array of the projects with contextual actions for the user.
-                const msg = projectListMsg(existingEntry.snykOrgs[entryOrgIndex].projects, param, orgId, entryOrgIndex);
-
-                // Send the message to the user or respond that there were no
-                // projects in the given organization (`param`).
-                try {
-                  await respond(msg as RespondArguments);
-                }
-                catch (error) {
-                  throw 'A response to the project list command could not be sent.'
-                }
-              }
-
-              // If we have an entry for the current user, but there aren't any
-              // Snyk projects in their lowdb entry...
-              else {
-                // @TODO update comment.
-                // Look up the orgId for the org name given via the command's
-                // `param` value.
-                if (typeof orgId === 'string') {
-                  // Call the Snyk API asynchronously using `getSnykProjects` and the orgId.
-                  const remoteData = await getSnykProjects(command.user_id, existingEntry.snykTokenType as string, existingEntry.snykAccessToken as string, orgId as string);
-
-                  // if (existingEntry.snykOrgs[entryOrgIndex].projects.length)
-
-                  // Store whatever information that API call returned in the
-                  // user's entry for next time.
-                  existingEntry.snykOrgs[entryOrgIndex].projects = remoteData.projects;
-
-                  // Store whatever information that API call returned in the
-                  // user's entry for next time.
-                  // existingEntry.snykProjects = remoteData.projects;
-
-                  // To make life easier, let's add the org name and orgId to
-                  // each project in  the entry as top-level keys for easier
-                  // lookup / comparison.
-                  existingEntry.snykOrgs[entryOrgIndex].projects.map(project => {
-                    project.org = param;
-                    project.orgId = orgId;
-                  });
-
-                  // Write to the lowdb file / save to the DB.
-                  await dbWriteEntry({ table: 'users', data: existingEntry });
-
-                  // Now that we have some data,
-                  // Generate a Slack block array of the projects with
-                  // contextual actions for the user.
-                  const msg = projectListMsg(existingEntry.snykOrgs[entryOrgIndex].projects, param, orgId, entryOrgIndex);
-
-                  // Send the message to the user.  The message should contain
-                  // the list of projects in the given Snyk org or a statement
-                  // letting them know that there were no projects in the given
-                  // organization (provided by `param`).
-                  // @ts-ignore
-                  await respond(msg);
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Got an error handling Slack command: `/snyk project list <snyk org>`.');
-            // @ts-ignore
-            // console.error(error);
-            throw error.data;
-          }
-        }
-        // List all projects, regardless of Org
-        if (subcmd === 'list' && typeof param === 'undefined') {
-
-        }
         break;
+
+      case 'project':
+        snykListCommandHandler(command, respond, commandParts);
+        break;
+
       default:
         await respond('You gotta gimme something');
         break;

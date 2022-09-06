@@ -1,6 +1,5 @@
-import { SnykProjectMsgParts, SnykProject } from '../../types';
-import slugify from 'slugify';
-import { createProjObj } from '../utils';
+import { SnykProject } from '../../types';
+import { createProjObj, dbReadEntry, generateListItemMsgBlocks, projListFinaleBlocks, projListIntroBlocks } from '../utils';
 
 export const projectListMsg = (projects: SnykProject[], org: string, orgId: string | boolean, orgEntryIndex: number) => {
   console.enter(`Entering projectListMsg()...`);
@@ -14,16 +13,10 @@ export const projectListMsg = (projects: SnykProject[], org: string, orgId: stri
 
   // Put together the blocks for each project.
   projects.map((project, index) => {
-    console.problem(`Project.Org = ${project.org}`);
-    console.problem(`Org = ${org}`);
     if (project.org === org) {
-      console.log('We have a match for - ', project.name);
       const projObj = createProjObj(project);
-      console.problem(`PROJOBJ = ${projObj}`);
-      const listItemBlocks = generateListItemBlocks(projObj, orgEntryIndex, index);
-      console.problem(`LIST ITEM BLOCKS = ${listItemBlocks}`);
+      const listItemBlocks = generateListItemMsgBlocks(projObj, orgEntryIndex, index);
       projectBlocks = projectBlocks.concat(listItemBlocks);
-      console.problem(`PROJECT BLOCK COUNT = ${projectBlocks.length}`);
     }
   });
 
@@ -36,20 +29,20 @@ export const projectListMsg = (projects: SnykProject[], org: string, orgId: stri
   // using positive intro/outro dialog and the list of projects.
   if (projectBlocks.length >= 1) {
     // Add the positive intro block(s) to the message.
-    blocks = blocks.concat(projListIntroBlocks('positive', org));
+    blocks = blocks.concat(projListIntroBlocks({sentiment: 'positive', org }));
     // Add the blocks for each project to the message.
     blocks = blocks.concat(projectBlocks)
     // Add the finale.
-    blocks = blocks.concat(projListFinaleBlocks('positive', orgId));
+    blocks = blocks.concat(projListFinaleBlocks({sentiment: 'positive', orgId}));
   }
 
   // If there are no projects to return, construct the response using negative
   // intro/outro dialog.
   else {
     // Add the negative intro block(s) to the message.
-    blocks = blocks.concat(projListIntroBlocks('negative', org));
+    blocks = blocks.concat(projListIntroBlocks({sentiment: 'negative', org}));
     // Add the finale.
-    blocks = blocks.concat(projListFinaleBlocks('negative', orgId));
+    blocks = blocks.concat(projListFinaleBlocks({sentiment: 'negative', orgId}));
   }
 
   return {
@@ -58,118 +51,3 @@ export const projectListMsg = (projects: SnykProject[], org: string, orgId: stri
   };
 
 };
-
-// Create the Intro statement for the project list message.  Depending on the
-// results of the org / project comparison in the function that calls this, the
-// message will be either positive or negative.
-const projListIntroBlocks = (sentiment: 'positive' | 'negative', org: string) => {
-  // Intro statements for the project list message response.
-  const projListIntroStatementPositive = `Here are the known projects in the *${org}* organization...\n_Use the overflow menu to the right of any project to see more options._`;
-  const projListIntroStatementNegative = `There are no known projects in the *${org}* organization.\nIf this is unexpected, it is likely that this App simply hasn't queried Snyk directly in a while.`;
-
-  return [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: sentiment === 'positive' ? projListIntroStatementPositive : projListIntroStatementNegative
-      }
-    },
-  ];
-
-};
-
-
-// Return the finale / outtro blocks for the project list command response.
-// Contains the button / action trigger for refreshing projects from Snyk.
-// @TODO: Actually refresh projects from Snyk when this is clicked.
-const projListFinaleBlocks = (sentiment: 'positive' | 'negative', orgId: string) => {
-  // Outtro statements for the project list message.
-  const projListOuttroStatementPositive = `Don't see the project you're looking for? Try the button below to manually refresh data from Snyk.`;
-  const projListOuttroStatementNegative = `This App keeps a local list of Snyk projects to avoid interacting with the Snyk API too often. You can trigger a refresh of the requested Org's project data using the button below.`
-
-  console.log('projListFinaleBlocks() !!! Org ID: ', orgId);
-
-  return [
-    {
-      type: 'divider'
-    },
-    {
-      type: 'context',
-      elements: [
-        {
-          type: 'mrkdwn',
-          text: sentiment === 'positive' ? projListOuttroStatementPositive : projListOuttroStatementNegative
-        }
-      ]
-    },
-    {
-      type: 'actions',
-      block_id: 'project-list-actions',
-      elements: [
-        {
-          type: 'button',
-          text: {
-            type: 'plain_text',
-            text: 'Refresh Projects',
-            emoji: false
-          },
-          action_id: 'projects_refresh',
-          // value: 'abcdefghighjklmnop:w'
-          value: `org-id--${orgId}`,
-        }
-      ]
-    }
-  ];
-
-};
-
-// Given a `SnykProjectMsgParts` object, generate the appropriate blocks for the
-// list of projects within an org.
-const generateListItemBlocks = (project: SnykProjectMsgParts, orgIndexInUserEntry: number, projIndexInUserOrgEntry: number) => {
-  return [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `\`${project.name}\``,
-      },
-      accessory: {
-        type: 'overflow',
-        options: [
-          {
-            text: {
-              type: 'plain_text',
-              text: 'View on Snyk.io',
-              emoji: true
-            },
-            url: `${project.browseUrl}`
-          },
-          {
-            text: {
-              type: 'plain_text',
-              text: 'More details',
-              emoji: true
-            },
-            // value: project,
-            value: `proj-details--${slugify(project.name)}--${orgIndexInUserEntry}--${projIndexInUserOrgEntry}`,
-            description: {
-              type: 'plain_text',
-              text: 'Get more details about this project.'
-            }
-          },
-          {
-            text: {
-              type: 'plain_text',
-              text: 'Issue count',
-              emoji: true
-            },
-            value: 'proj-list-issue-count'
-          }
-        ],
-        action_id: 'project_list_overflow_action'
-      }
-    },
-  ]
-}
-

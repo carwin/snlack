@@ -37,14 +37,14 @@ export const getSnykAppOrgs = async (slackCallerUid: string, tokenType: string, 
       method: 'GET',
       url: `/orgs?version=2022-04-06~experimental`,
       params: {
-        slackCaller: slackCallerUid
+        slackCaller: slackCallerUid // @TODO - I think I'm leaning towards just using that global `state` instead of trying to do this.
       }
     });
 
     return {
       // Use v1 until rest endpoint supports indirect org access
       //orgs: result.data.data.map((org: RestApiOrg) => ({ id: org.id, name: org.attributes.name })),
-      orgs: result.data.orgs.map((org: V1ApiOrg) => ({ id: org.id, name: org.name })),
+      orgs: result.data.orgs.map((org: V1ApiOrg) => ({ id: org.id, name: org.name, projects: [] })),
     };
   } catch (error) {
     console.error('Error fetching org info: ' + error);

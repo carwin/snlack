@@ -19,9 +19,9 @@ export function callSnykApi(tokenType: string, token: string, version: SnykAPIVe
       'Content-Type': contentType,
       Authorization: `${tokenType} ${token}`,
     },
-    params: {
-      slackCaller: slackCallerUid
-    }
+    // params: {
+    //   slackCaller: slackCallerUid
+    // }
   });
 
   axiosInstance.interceptors.request.use(refreshTokenReqInterceptor, Promise.reject);

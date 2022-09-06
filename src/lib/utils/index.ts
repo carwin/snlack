@@ -6,5 +6,6 @@ export * from './getSnykAppOrgs'
 export * from './refreshSnykAuthToken'
 export * from './snykOAuth2Strategy'
 export * from './getSnykProjects'
+export * from './slackMessageBlocks';
 export * from './state'
 export * from './createProjObj';

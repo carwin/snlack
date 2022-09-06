@@ -1,7 +1,7 @@
 import type { AxiosError, AxiosRequestConfig } from 'axios';
 import { SnykAuthData, Envars, SnlackUser } from '../../types';
 import { DateTime } from 'luxon'; // A library for dealing with dates and times in js.
-import { dbWriteEntry, getDbEntryIndex, readFromDb } from './db';
+import { dbReadEntry, dbWriteEntry, getDbEntryIndex, readFromDb } from './db';
 // import { mostRecent } from '../../../controllers/projects/projectsHandlers';
 import { EncryptDecrypt } from './encryptDecrypt';
 import { refreshSnykAuthToken } from './refreshSnykAuthToken';
@@ -22,49 +22,25 @@ export async function refreshTokenReqInterceptor(request: AxiosRequestConfig): P
   console.log('Interceptor params: ', request.params);
   console.log('Interceptor app state:', state);
 
-  const db = await readFromDb();
-  // @ts-ignore
-  // @TODO
-  // const data = mostRecentSnykInstall(db.snykAppInstalls);
-  // const data = db.snykAppInstalls[0];
-  const callerSlackUid = request.params.slackCaller || state.slackUid;
+  // const db = await readFromDb();
+  const callerSlackUid = state.slackUid;
   console.log('The caller\'s slack ID is set to: ', callerSlackUid);
+  const snlackUserData: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: callerSlackUid }) as SnlackUser;
 
-  try {
-    // Look up a Db entry for the caller's Slack user ID.
-    // Attempt to read the db data(auth token, refresh token and expiry)
-    const dbEntryIndex = await getDbEntryIndex({ table: 'users', key: 'slackUid', value: callerSlackUid }) as number;
-    const dbEntry = typeof dbEntryIndex !== 'boolean' ? db.users[dbEntryIndex] : false;
+  // If there is no data, then continue with the request
+  if (!snlackUserData || typeof snlackUserData === 'undefined') return request;
+  console.problem('There is snlackUserData... dealing with expiry and auth dates before continuing request');
 
-    // If there is no data, then continue with the request
-    if (!dbEntry || typeof dbEntry.snykUid === 'undefined') return request;
-    console.log('dbEntry.snykUid: ', dbEntry.snykUid);
-    // Data used to calculate the expiry
-    const expiresIn = dbEntry.snykTokenExpiry;
-    console.log('dbEntry.snykTokenExpiry: ', dbEntry.snykTokenExpiry);
-    console.log('expiresIn: ', expiresIn);
-    const createdDate = dbEntry.snykAuthDate!; // There's no way snykAuthDate could be undefined if we've made it this far.
-    console.log('dbEntry.snykAuthDate: ', dbEntry.snykAuthDate);
-    console.log('createdDate: ', createdDate);
-    // Use npm library luxon to parse the date and calculate expiry
-    const parsedCreatedDate = DateTime.fromISO(createdDate.toString());
-    const expirationDate = parsedCreatedDate.plus({ seconds: expiresIn });
-    console.log('expiration date < now? ', expirationDate < DateTime.now());
-    // Check if the Snyk access token is expired.
-    // If it is, refresh the Snyk token.
-    if (expirationDate < DateTime.now()) {
-      console.problem('Expiration date has passed, calling refreshAndUpdateDb()...');
-      await refreshAndUpdateDb(dbEntry);
-    }
-
-    return request;
-
-  } catch (error) {
-    console.problem(`Had a problem in this interceptor: ${error}`);
-    throw error;
-  } finally {
-    console.leave('Returning from refreshTokenReqInterceptor()...');
+  const expiresIn = snlackUserData.snykTokenExpiry;
+  const createdDate = typeof snlackUserData.snykAuthDate !== 'undefined' ? snlackUserData.snykAuthDate : new Date();
+  // luxon time.
+  const parsedCreateDate = DateTime.fromISO(createdDate.toString());
+  const expirationDate = parsedCreateDate.plus({ seconds: expiresIn });
+  // check
+  if (expirationDate < DateTime.now()) {
+    await refreshAndUpdateDb(snlackUserData);
   }
+  return request;
 }
 
 /**
@@ -78,56 +54,38 @@ export async function refreshTokenReqInterceptor(request: AxiosRequestConfig): P
  */
 export async function refreshTokenRespInterceptor(error: AxiosError): Promise<AxiosError> {
   console.enter('Entering refreshTokenRespInterceptor()...');
+  const status = error.response ? error.response.status : null;
 
-  try {
-    const status = error.response ? error.response.status : null;
-    console.log('refreshTokenRespInterceptor() status: ', status);
+  // Only refresh and retry the token on 401 status codes, in case the access
+  // token is invalidated before it expires, like when the signing key has been
+  // rotated during an emergency.
+  if (status === 401) {
+    // Grab the current user's Slack ID from the global state object.
+    const callerSlackUid = state.slackUid;
 
-    if (status === 401) {
-      console.log('Error Slack Caller', error.config.params);
-      const callerSlackUid = error.config.params.slackCaller || state.slackUid;
-      console.log('Error Slack Caller', callerSlackUid);
+    // Read the relevant local data(current user's: auth token, refresh token
+    // and expiry, etc.)
+    const snlackUserData: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: callerSlackUid }) as SnlackUser;
 
-      // Read the latest data(auth token, refresh token and expiry)
-      const db = await readFromDb();
-
-      const dbEntryIndex = await getDbEntryIndex({ table: 'users', key: 'slackUid', value: callerSlackUid }) as number;
-      const dbEntry: SnlackUser = db.users[dbEntryIndex];
-
-      console.log('Db Entry Index in respInterceptor', dbEntryIndex);
-      console.log('Db Entry in respInterceptor', dbEntry);
-
-      // If there is no Db, data then fail the retry
-      // if (!dbEntryIndex) return Promise.reject(error);
-      if (typeof dbEntryIndex === 'undefined' || !dbEntryIndex) {
-        return Promise.reject(error);
-      }
-
-      console.log('Trying to get a new access token...');
-
-      const newAccessToken: string = await refreshAndUpdateDb(dbEntry as SnlackUser);
-      console.problem(`Here is the new access token: ${newAccessToken}`);
-
-      // Use the new access token to retry the failed request
-      // if (dbEntry.snykTokenType) error.config.headers['Authorization'] = `${dbEntry.snykTokenType} ${newAccessToken}`;
-      if (typeof dbEntry.snykTokenType !== 'undefined') {
-        console.problem('There is a snykTokenType on this entry, new headers time.');
-        error.config.headers['Authorization'] = `${dbEntry.snykTokenType} ${newAccessToken}`;
-        console.problem(`Here are the new headers: ${error.config.headers}`);
-      }
-
-      return axios.request(error.config);
+    // If there is no local data then fail the retry
+    if (!snlackUserData) {
+      console.log('There is no db entry after attempting a read... Rejecting');
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    const newAccessToken: string = await refreshAndUpdateDb(snlackUserData)
+      .catch(error => console.log('There was an issue retrieving a new access token from refreshTokenRespInterceptor()...')) as string;
 
-  } catch (error) {
-    console.error('Had a problem in the refreshTokenRespInterceptor()', error);
-    throw error;
+    // Use the new access token to retry the failed request.
+    error.config.headers['Authorization'] = `${snlackUserData.snykTokenType} ${newAccessToken}`;
+
+    return axios.request(error.config);
   }
-  // finally {
-  //   console.leave('Returning from refreshTokenRespInterceptor()...');
-  // }
+
+  console.log('--------------------------------------------------------------------------------');
+  console.log('refreshTokenRespInterceptor status was not 401, returning Promise.reject with the error.');
+  console.log('--------------------------------------------------------------------------------');
+  return Promise.reject(error.response?.status);
 }
 
 /**
@@ -138,41 +96,28 @@ export async function refreshTokenRespInterceptor(error: AxiosError): Promise<Ax
 // async function refreshAndUpdateDb(data: SnlackUser): Promise<string> {
 const refreshAndUpdateDb = async (data: SnlackUser): Promise<string> => {
   console.enter('Entering into refreshAndUpdateDb...');
-  console.log('Time to refresh and update the db...');
   console.log('Working with this data: ', data);
+
+
   // Create a instance for encryption and decryption
   const eD = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET as string);
-  // Make request to refresh token
-  console.log('\n\nencrypted refresh token before calling refreshSnykAuthToken: ', data.snykRefreshToken as string);
-  console.log('\n\ndecrypted refresh token before calling refreshSnykAuthToken: ', eD.decryptString(data.snykRefreshToken as string));
 
+  console.log('Using this refresh token to get a new access token: ', eD.decryptString(data.snykRefreshToken as string));
+
+  // Make request to refresh our token.
   const { access_token, expires_in, refresh_token, scope, token_type } = await refreshSnykAuthToken(
     eD.decryptString(data.snykRefreshToken! as string),
+    // data.snykRefreshToken! as string
   );
 
-  console.log('\n\ndecrypted refresh token AFTER calling refreshSnykAuthToken: ', eD.decryptString(data.snykRefreshToken as string));
+  console.log('The new refresh token is: ', refresh_token);
 
-  // Update the access and refresh token with the newly fetched access and refresh token
-  // along with the expiry and other required info
-  // @TODO
-  // @ts-ignore
-  // await updateDb('snykAuth', data, {
-  //   ...data,
-  //   access_token: eD.encryptString(access_token),
-  //   expires_in,
-  //   refresh_token: eD.encryptString(refresh_token),
-  //   token_type,
-  //   scope,
-  //   date: new Date(),
-  // });
   const updatedData = {
      ...data,
     slackUid: state.slackUid,
-    // snykAccessToken: eD.encryptString(access_token),
-    snykAccessToken: access_token,
+    snykAccessToken: eD.encryptString(access_token),
     snykTokenExpiry: expires_in,
-    // snykRefreshToken: eD.encryptString(refresh_token),
-    snykRefreshToken: refresh_token,
+    snykRefreshToken: eD.encryptString(refresh_token),
     snykTokenType: token_type,
     snykScopes: scope,
     snykAuthDate: new Date()
@@ -182,8 +127,6 @@ const refreshAndUpdateDb = async (data: SnlackUser): Promise<string> => {
 
   await dbWriteEntry({ table: 'users', data: updatedData });
 
-  console.log('Finished the refresh, here is the access token: ', access_token);
-
-  console.enter('Leaving refreshAndUpdateDb...');
+  console.leave('Leaving refreshAndUpdateDb...');
   return access_token;
 }
