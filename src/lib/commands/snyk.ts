@@ -1,7 +1,10 @@
-import { App as Slack, AllMiddlewareArgs, SlackCommandMiddlewareArgs, RespondArguments } from '@slack/bolt';
+import { AllMiddlewareArgs, App as Slack, SlackCommandMiddlewareArgs } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
 import { dbDeleteEntry } from '../utils';
-import { snykListCommandHandler } from './snykListProjects';
+import { snykProjectHelpCommandHandler } from './snykProjectHelp';
+import { snykProjectIssuesCommandHandler } from './snykGetProjectIssues';
+import { snykListProjectsCommandHandler } from './snykListProjects';
+import { snykListOrgsCommandHandler } from './snykListOrgs';
 
 export interface CommandRegisterFn {
   (slack: Slack): Promise<any>;
@@ -81,6 +84,7 @@ export class SnykCommand extends Command {
     switch(cmd) {
       case 'org':
         this.orgHandler(subcmd);
+        if (subcmd === 'list') snykListOrgsCommandHandler(command, respond, commandParts);
         break;
       case 'app':
         if (subcmd === 'del') {
@@ -89,7 +93,10 @@ export class SnykCommand extends Command {
         break;
 
       case 'project':
-        snykListCommandHandler(command, respond, commandParts);
+        if (typeof subcmd === 'undefined') snykProjectHelpCommandHandler(command, respond, commandParts);
+        if (subcmd === 'help') snykProjectHelpCommandHandler(command, respond, commandParts);
+        if (subcmd === 'list') snykListProjectsCommandHandler(command, respond, commandParts);
+        if (subcmd === 'issues') snykProjectIssuesCommandHandler(command, respond, commandParts);
         break;
 
       default:
@@ -105,155 +112,3 @@ export class SnykCommand extends Command {
   }
 
 }
-
-
-//   public commandHandler = async ({ client, command }) => {
-
-//   }
-
-// }
-// // class SlackCommand {
-// //   constructor() {
-
-// //   }
-
-// //   private
-// // }
-
-
-// const generateProjectMsgBlocksLite = (project: SnykProjectMsgParts) => {
-//   return {
-//     blocks: [
-//       {
-//         type: 'section',
-//         text: {
-//           type: 'mrkdwn',
-//           text: `\`${project.name}\``,
-//         },
-//         accessory: {
-//           type: 'overflow',
-//           options: [
-//             {
-//               text: {
-//                 type: 'plain_text',
-//                 text: 'View on Snyk.io',
-//                 emoji: true
-//               },
-//               url: `${project.browseUrl}`
-//             },
-//             {
-//               text: {
-//                 type: 'plain_text',
-//                 text: 'More details',
-//                 emoji: true
-//               },
-//               value: 'proj-list-more-details'
-//             },
-//             {
-//               text: {
-//                 type: 'plain_text',
-//                 text: 'Issue count',
-//                 emoji: true
-//               },
-//               value: 'proj-list-issue-count'
-//             }
-//           ],
-//           action_id: 'project_list_overflow_action'
-//         }
-//       },
-//       // {
-//       //   type: 'actions',
-//       //   elements: [
-//       //     {
-//       //       type: 'button',
-//       //       text: {
-//       //         type: 'plain_text',
-//       //         text: 'View Issues',
-//       //         emoji: true
-//       //       }
-//       //     },
-//       //     {
-//       //       type: 'button',
-//       //       text: {
-//       //         type: 'plain_text',
-//       //         text: 'Do something else',
-//       //         emoji: true
-//       //       }
-//       //     },
-//       //     {
-//       //       type: 'overflow',
-//       //       options: [
-//       //         {
-//       //           text: {
-//       //             type: 'plain_text',
-//       //             text: 'Do a thing',
-//       //             emoji: true
-//       //           },
-//       //           value: 'value-0'
-//       //         },
-//       //         {
-//       //           text: {
-//       //             type: 'plain_text',
-//       //             text: 'Do another thing',
-//       //             emoji: true
-//       //           },
-//       //           value: 'value-1'
-//       //         },
-//       //         {
-//       //           text: {
-//       //             type: 'plain_text',
-//       //             text: 'Another different thing',
-//       //             emoji: true
-//       //           },
-//       //           value: 'value-3'
-//       //         }
-//       //       ]
-//       //     }
-//       //   ]
-//       // },
-//       // {
-//       //   type: 'divider'
-//       // }
-//     ]
-//   }
-// }
-
-//               // {
-//               //   "id": "e414f05e-0039-4090-8321-8f310967477e",
-//               //   "name": "carwin/qmk_firmware_flashbin:latest",
-//               //   "created": "2022-08-15T16:14:51.787Z",
-//               //   "origin": "docker-hub",
-//               //   "type": "deb",
-//               //   "readOnly": false,
-//               //   "testFrequency": "daily",
-//               //   "isMonitored": true,
-//               //   "totalDependencies": 221,
-//               //   "issueCountsBySeverity": {
-//               //     "low": 13,
-//               //     "high": 189,
-//               //     "medium": 211,
-//               //     "critical": 56
-//               //   },
-//               //   "imageId": "sha256:20c9c7769d773d1950035cd095cc80ee94e2fa6a3ca715197d495aae3264a9e6",
-//               //   "imageTag": "latest",
-//               //   "imagePlatform": "linux/amd64",
-//               //   "lastTestedDate": "2022-08-31T00:17:14.829Z",
-//               //   "browseUrl": "https://app.snyk.io/org/kuberneatos/project/e414f05e-0039-4090-8321-8f310967477e",
-//               //   "owner": null,
-//               //   "importingUser": {
-//               //     "id": "b9fe8330-8291-4c48-9bce-2a60fdd7dc44",
-//               //     "name": "Carwin Young",
-//               //     "username": "carwin.young",
-//               //     "email": "carwin.young@snyk.io"
-//               //   },
-//               //   "tags": [],
-//               //   "attributes": {
-//               //     "criticality": [],
-//               //     "lifecycle": [],
-//               //     "environment": []
-//               //   },
-//               //   "branch": null,
-//               //   "targetReference": "latest",
-//               //   "org": "Kuberneatos",
-//               //   "orgId": "bb870d77-8300-42ae-a110-d200bedbdd7f"
-//               // },

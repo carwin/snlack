@@ -1,7 +1,8 @@
 import { SnykProject } from '../../types';
 import { createProjObj, dbReadEntry, generateListItemMsgBlocks, projListFinaleBlocks, projListIntroBlocks } from '../utils';
 
-export const projectListMsg = (projects: SnykProject[], org: string, orgId: string | boolean, orgEntryIndex: number) => {
+export const projectListMsg = ({projects, org, orgId, orgEntryIndex}: {projects: SnykProject[], org: string, orgId: string | boolean, orgEntryIndex: number}) => {
+// export const projectListMsg = (projects: SnykProject[], org: string, orgId: string | boolean, orgEntryIndex: number) => {
   console.enter(`Entering projectListMsg()...`);
   console.problem(`counting projects... ${projects.length}`);
 
@@ -13,6 +14,7 @@ export const projectListMsg = (projects: SnykProject[], org: string, orgId: stri
 
   // Put together the blocks for each project.
   projects.map((project, index) => {
+    console.log('looping projects... round ', index);
     if (project.org === org) {
       const projObj = createProjObj(project);
       const listItemBlocks = generateListItemMsgBlocks(projObj, orgEntryIndex, index);

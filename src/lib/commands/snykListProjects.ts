@@ -1,43 +1,22 @@
-import { RespondArguments, RespondFn, SlashCommand } from "@slack/bolt";
-import { projectListMsg, projectListAllMsg } from '../messages';
-import { dbReadEntry, dbWriteEntry, EncryptDecrypt, getDbEntryIndex, getSnykOrgIdByName, getSnykProjects, readFromDb } from '../utils';
-import { SnlackUser, SnykProject, SnykOrg } from '../../types';
+import { RespondArguments, RespondFn, SlashCommand } from '@slack/bolt';
+import { SnlackUser, SnykCommandParts, SnykOrg, SnykProject } from '../../types';
+import { projectListAllMsg, projectListMsg } from '../messages';
+import { dbReadEntry, EncryptDecrypt, getSnykOrgIdByName, getSnykOrgNameById } from '../utils';
+import { validate as uuidValidate } from 'uuid';
 
-// @TODO: Move to types.
-type SnykCommandParts = {
-  subcmd?: string | undefined,
-  param?: string | undefined,
-  param2?: string | undefined,
-  param3?: string | undefined
-}
 
 /**
  * snykListCommandHandler()
  */
-export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: RespondFn, { subcmd, param, param2, param3 }: SnykCommandParts) => {
+export const snykListProjectsCommandHandler = async(rawCommand: SlashCommand, respond: RespondFn, { subcmd, param, param2, param3 }: SnykCommandParts) => {
 
   // New instance of EncryptDecrypt.
   const eD = new EncryptDecrypt(process.env.SNYK_ENCRYPTION_SECRET);
 
   // ---------------------------------------------------------------------------
-  // `/snyk project` command entrypoint.
-  // ---------------------------------------------------------------------------
-  if (typeof subcmd === 'undefined') {
-    // @TODO return the help command.
-    await respond('You probably meant to pass a parameter like `list`. Try this:\n \`\`\`/snyk project list\`\`\`\nor\n\`\`\`/snyk project list \'My Org Name\'\`\`\`');
-  }
-
-  // ---------------------------------------------------------------------------
-  // Return the help response
-  // ---------------------------------------------------------------------------
-  else if (subcmd === 'list' && param === 'help') {
-    // @TODO list command help.
-  }
-
-  // ---------------------------------------------------------------------------
   // List all projects, regardless of Org.
   // ---------------------------------------------------------------------------
-  else if (subcmd === 'list' && typeof param === 'undefined') {
+  if (subcmd === 'list' && typeof param === 'undefined') {
     let projectCollection: SnykProject[] = [];
     const existingUserEntry: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: rawCommand.user_id }) as SnlackUser;
 
@@ -75,11 +54,21 @@ export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: R
   // @TODO - No need to do the readFromDb() stuff. Just go grab the one we're interested in using dbReadEntry().
   // @TODO - Type gates are too strong in places. Users should still get a response when they pass an Org name that doesn't exist.
   else if (subcmd === 'list' && typeof param !== 'undefined') {
+
+
+    // Use uuid validation to determine whether or not the user passed an Org ID
+    // as the parameter, or an Org name string.
+    const isUUID = uuidValidate(param);
+
+    console.log('Valid UUID?: ', isUUID);
+
     // Everything within this scope relies, more or less, on having a Snyk
     // organization ID, which we'll retrieve by parsing the name value (given to
     // the function via the `param` argument).
-    const orgId: string = await getSnykOrgIdByName(rawCommand.user_id, param) as string;
+    // const orgId: string = await getSnykOrgIdByName(rawCommand.user_id, param) as string;
+    const orgId = isUUID ? param : await getSnykOrgIdByName(rawCommand.user_id, param) as string;
 
+    console.log(`The org ID we'll use is: ${orgId}`)
     // If there's no orgId, log a note to the console and respond to the user.
     if (!orgId) {
       const orgNotFoundMsg = `A Snyk organization matching *${param}* could not be found. Are you certain it exists and that you have access to it?`;
@@ -109,24 +98,52 @@ export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: R
 
           // Define a matching function to use for finding the user's desired
           // SnykOrg object
-          const orgNameMatch = (org: SnykOrg) => org.name === param;
+          const orgNameMatch = (org: SnykOrg) => org.name === param.toString();
+          const orgIdMatch = (org: SnykOrg) => {
+            console.log('THE ORG: ', org.id);
+            console.log('THE PARAM: ', param);
+            console.log('match~!!???', org.id === param);
+            console.log('match~!!???', org.id === param.toString());
+            console.log('match~!!???', org.id.toString() === param.toString());
+
+            return org.id === param.toString();
+          }
           let desiredOrgIndex: undefined | number;
+
+          console.log('okay, why not? ---- ', existingEntry.snykOrgs.findIndex(orgIdMatch));
 
           // Look for the SnykOrgs array index that matches the org the user has
           // requested via `param`.
-          desiredOrgIndex = existingEntry.snykOrgs.findIndex(orgNameMatch) || undefined;
+          if (isUUID) {
+            desiredOrgIndex = existingEntry.snykOrgs.findIndex(orgIdMatch) as number ?? undefined;
+          } else {
+            desiredOrgIndex = existingEntry.snykOrgs.findIndex(orgNameMatch) as number ?? undefined;
+          }
 
           // @TODO - No need to write if we're only calling the API during user action.
           // Write it to the "db" file.
           // await dbWriteEntry({ table: 'users', data: existingEntry });
 
+          console.log(`desired org index: ${desiredOrgIndex}`);
+
           // Only continue if the desiredOrgIndex has been found.
+          console.log('typeof index', typeof desiredOrgIndex);
           if (typeof desiredOrgIndex === 'number') {
             // Send the message to the user.  The message should contain
             // the list of projects in the given Snyk org or a statement
             // letting them know that there were no projects in the given
             // organization (provided by `param`).
-            const msg = projectListMsg(existingEntry.snykOrgs[desiredOrgIndex].projects, param, orgId, desiredOrgIndex) as RespondArguments;
+
+            const msgArgs = {
+              projects: existingEntry.snykOrgs[desiredOrgIndex].projects as SnykProject[],
+              org: isUUID ? await getSnykOrgNameById(rawCommand.user_id, param): param,
+              orgId,
+              orgEntryIndex: desiredOrgIndex
+            }
+
+            // const msg = projectListMsg(existingEntry.snykOrgs[desiredOrgIndex].projects, param, orgId, desiredOrgIndex) as RespondArguments;
+            // @ts-ignore
+            const msg = projectListMsg(msgArgs) as RespondArguments;
             await respond(msg);
           }
           else {
@@ -144,5 +161,3 @@ export const snykListCommandHandler = async(rawCommand: SlashCommand, respond: R
 
   }
 }
-
-

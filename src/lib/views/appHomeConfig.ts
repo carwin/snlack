@@ -1,8 +1,31 @@
-import { readFromDb } from "../utils";
+import { state } from "../../App";
+import {stateHandler, userState } from '../utils';
+import { generateOrgItemProjectsSelectOptions } from "../commands/snykListOrgs";
+import { dbReadEntry, readFromDb } from "../utils";
 
 export const appHomeConfigView = () => {
 
 }
+
+// const getConfigProjList = async () => {
+//   const tempState = new Proxy(userState, stateHandler)
+//   tempState.changeUser('U03SNLU01JA');
+
+//   const userData = await dbReadEntry({table: 'users', key: 'slackUid', value: tempState.slackUid })
+//   let projectBlocksCollection: any[] = [];
+
+//   // @ts-ignore
+//   userData.snykOrgs.map((org, index) => {
+//     // projectCollection = projectCollection.concat(org.projects);
+//     projectBlocksCollection = projectBlocksCollection.concat(generateOrgItemProjectsSelectOptions(org));
+//   })
+
+//   return projectBlocksCollection;
+// }
+
+//
+// projectOpts = generateOrgItemProjectsSelectOptions()
+// const projectOpts = await getConfigProjList();
 
 export const appSettingsFormBlocks = [
   {
@@ -23,31 +46,75 @@ export const appSettingsFormBlocks = [
   {
     type: "input",
     element: {
-      type: "plain_text_input",
+      type: "multi_static_select",
       action_id: "option_1",
       placeholder: {
         type: "plain_text",
-        text: "First option"
-      }
+        text: "Choose projects..."
+      },
+      // @ts-ignore
+      // options: getConfigProjList(),
+      options: [
+        {
+          text: {
+            type: 'plain_text',
+            text: 'carwin/qmk:firmware'
+          }
+        }
+      ]
     },
     label: {
       type: "plain_text",
-      text: "Option 1"
+      text: "Project Filters"
     }
   },
   {
     type: "input",
     element: {
-      type: "plain_text_input",
+      type: "multi_static_select",
       action_id: "option_2",
       placeholder: {
         type: "plain_text",
-        text: "How many options do they need, really?"
-      }
+        text: "Get notified only when severity is..."
+      },
+      options: [
+        {
+          text: {
+            type: 'plain_text',
+            text: 'critical',
+
+          },
+          value: 'critical',
+
+        },
+        {
+          text: {
+            type: 'plain_text',
+            text: 'high',
+
+          },
+          value: 'high',
+
+        },
+        {
+          text: {
+            type: 'plain_text',
+            text: 'medium',
+          },
+          value: 'medium',
+        },
+        {
+          text: {
+            type: 'plain_text',
+            text: 'low',
+          },
+          value: 'low',
+        }
+      ]
     },
     label: {
       type: "plain_text",
-      text: "Option 2"
+      text: "Issue Severity Filters"
     }
   },
   {
@@ -63,48 +130,6 @@ export const appSettingsFormBlocks = [
       }
     ]
   },
-  {
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: "Test block with multi static select"
-    },
-    accessory: {
-      type: "multi_static_select",
-      placeholder: {
-        type: "plain_text",
-        text: "Select options",
-        emoji: true
-      },
-      "options": [
-        {
-          text: {
-            type: "plain_text",
-            text: "*this is plain_text text*",
-            emoji: true
-          },
-          value: "value-0"
-        },
-        {
-          text: {
-            type: "plain_text",
-            text: "*this is plain_text text*",
-            emoji: true
-          },
-          "value": "value-1"
-        },
-        {
-          text: {
-            type: "plain_text",
-            text: "*this is plain_text text*",
-            emoji: true
-          },
-          value: "value-2"
-        }
-      ],
-      action_id: "multi_static_select-action"
-    }
-  }
 ];
 
 const getProjectsFilterOptions = async () => {

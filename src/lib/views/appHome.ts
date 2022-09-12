@@ -24,7 +24,8 @@ export class SlackHomeView implements HomeView {
     console.log('Updating Home view...');
     let blocks: any[] = this.homeBlocksPreSnyk(this.user);
     if (snykAuth === true) {
-      blocks = this.homeBlocksPostSnyk(this.user).concat(appSettingsFormBlocks as []);
+      // blocks = this.homeBlocksPostSnyk(this.user).concat(appSettingsFormBlocks as []);
+      blocks = appSettingsFormBlocks.concat(this.homeBlocksPostSnyk(this.user) as []);
     }
 
     return {

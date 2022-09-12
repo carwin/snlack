@@ -67,3 +67,19 @@ export const getSnykOrgIdByName = async (slackUid: string, orgName: string): Pro
 
   return orgId;
 }
+
+export const getSnykOrgNameById = async (slackUid: string, orgId: string): Promise<string | false> => {
+  const data = await dbReadEntry({ table: 'users', key: 'slackUid', value: slackUid }) as SnlackUser;
+
+  if (!data.snykOrgs) throw 'This user has no Snyk organizations to use for lookup.';
+
+  let orgName: string | undefined;
+
+  data.snykOrgs.map((org) => {
+    if (org.id === orgId) orgName = org.name;
+  });
+
+  if (typeof orgName === 'undefined' || !orgName) return false;
+
+  return orgName;
+}
