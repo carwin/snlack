@@ -5,6 +5,7 @@ import { snykProjectHelpCommandHandler } from './snykProjectHelp';
 import { snykProjectIssuesCommandHandler } from './snykGetProjectIssues';
 import { snykListProjectsCommandHandler } from './snykListProjects';
 import { snykListOrgsCommandHandler } from './snykListOrgs';
+import { snykDependencyListCommandHandler } from './snykDeps';
 
 export interface CommandRegisterFn {
   (slack: Slack): Promise<any>;
@@ -97,6 +98,15 @@ export class SnykCommand extends Command {
         if (subcmd === 'help') snykProjectHelpCommandHandler(command, respond, commandParts);
         if (subcmd === 'list') snykListProjectsCommandHandler(command, respond, commandParts);
         if (subcmd === 'issues') snykProjectIssuesCommandHandler(command, respond, commandParts);
+        break;
+
+      case 'dependencies' || 'deps':
+
+        if (typeof subcmd === 'undefined') break;
+        if (subcmd === 'help') break;
+        if (subcmd === 'list') snykDependencyListCommandHandler(command, respond, commandParts);
+        // if (subcmd === 'graph') snykDependencyGraphCommandHandler(command, respond, commandParts);
+        // if (subcmd === 'sbom') snykDependencySBOMCommandHandler(command, respond, commandParts);
         break;
 
       default:

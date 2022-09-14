@@ -41,6 +41,7 @@ export const getSnykProjects = async(slackCallerUid: string): Promise<unknown[]>
   return Promise.all(requests);
 }
 
+// @TODO - What is this doing here?
 /**
  * Given a Snyk Org name, return the Org's ID if it is present in the local store.
  *
