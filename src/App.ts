@@ -21,6 +21,7 @@ import { requestError } from './lib/middleware';
 import { getSnykOAuth2, stateHandler, userState } from './lib/utils';
 import { fnEnter, fnError, fnExit } from "./lib/utils/consoleExtensions";
 import { Controller } from './types';
+import { SnykCommand3030 } from './modules/snykOrg/snykOrg';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -162,16 +163,16 @@ export class Snlack {
 
     // new SnykCommand(slack, 'org', 'help', snykCmdOrgHelp);
     // new SnykCommand(slack, 'org', 'list', snykCmdOrgList);
-    slack.command(/^\/snyk/, async(args) => {
-      args.ack();
-      new SnykCommand('org', 'help', snykCmdOrgHelp, args);
-      new SnykCommand('org', 'info', snykCmdOrgInfo, args);
-      new SnykCommand('org', 'list', snykCmdOrgList, args);
-      new SnykCommand('project', 'help', snykCmdProjectHelp, args);
-      new SnykCommand('project', 'list', snykCmdProjectList, args);
-      new SnykCommand('project', 'info', snykCmdProjectInfo, args);
-      new SnykCommand('dependencies', 'list', snykDependencyListCommandHandler, args)
-    })
+    ////// slack.command(/^\/snyk/, async(args) => {
+    //////   args.ack();
+    //////   new SnykCommand('org', 'help', snykCmdOrgHelp, args);
+    //////   new SnykCommand('org', 'info', snykCmdOrgInfo, args);
+    //////   new SnykCommand('org', 'list', snykCmdOrgList, args);
+    //////   new SnykCommand('project', 'help', snykCmdProjectHelp, args);
+    //////   new SnykCommand('project', 'list', snykCmdProjectList, args);
+    //////   new SnykCommand('project', 'info', snykCmdProjectInfo, args);
+    //////   new SnykCommand('dependencies', 'list', snykDependencyListCommandHandler, args)
+    ////// })
 
     return slack;
   }
@@ -366,13 +367,18 @@ export class Snlack {
 
 // Create a new App instance.
 // ------------------------------------------------------------------------------
-new Snlack([
+export const snlack = new Snlack([
   new AppIndexController(),
   new SnykAuthController(),
   new SnykPreAuthController(),
   // @ts-ignore
   new SnykAuthCallbackController(this.app, this.expressApp),
 ], parseInt(process.env.PORT));
+
+const SC = SnykCommand3030.getInstance();
+SC.addCmd('org help', snykCmdOrgHelp);
+const SC2 = SnykCommand3030.getInstance();
+SC2.addCmd('project help', snykCmdProjectHelp);
 
 // Initialize our persistent JSON file store / pseudo-database.
 // We should do something else in production.
