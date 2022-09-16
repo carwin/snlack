@@ -3,6 +3,7 @@ import { SnykTag } from './snykTag';
 
 export interface SnykProjectMsgParts {
   [key: string]: any;
+  id: string;
   name: string;
   org: string;
   browseUrl: string;

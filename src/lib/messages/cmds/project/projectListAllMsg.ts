@@ -1,6 +1,6 @@
 // @TODO - could probably combine this with projectListMsg()
-import { SnlackUser, SnykOrg, SnykProject } from '../../types';
-import { createProjObj, dbReadEntry, generateListItemMsgBlocks, projListFinaleBlocks, projListIntroBlocks } from '../utils';
+import { SnlackUser, SnykOrg, SnykProject } from '../../../../types';
+import { createProjObj, dbReadEntry, generateListItemMsgBlocks, projListFinaleBlocks, projListIntroBlocks } from '../../../utils';
 
 export const projectListAllMsg = async (projects: SnykProject[], slackUid: string) => {
   console.enter(`Entering projectListAllMsg()...`);

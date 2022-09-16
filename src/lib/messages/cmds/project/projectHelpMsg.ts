@@ -1,7 +1,6 @@
 import { RespondArguments } from '@slack/bolt';
-import { SnykProjectMsgParts } from '../../types';
 
-export const projectHelpMsg = () => {
+export const projectHelpMsg = (): RespondArguments => {
 
   const blocks = [
     {
@@ -99,7 +98,7 @@ export const projectHelpMsg = () => {
 
   ];
 
-  return <RespondArguments>{
+  return {
     blocks,
     response_type: 'ephemeral',
     replace_original: false,

@@ -3,6 +3,7 @@ import { SnykProject, SnykProjectMsgParts } from '../../types';
 export const createProjObj = (project: SnykProject) => {
 
   const projObj: SnykProjectMsgParts = {
+    id: project.id,
     name: project.name,
     origin: project.origin,
     isMonitored: project.isMonitored.toString(),

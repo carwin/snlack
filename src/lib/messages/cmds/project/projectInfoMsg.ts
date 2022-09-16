@@ -1,13 +1,9 @@
-import { SnykProjectMsgParts } from '../../types';
+import { SnykProjectMsgParts } from '../../../../types';
 
-const divider = {
-  type: 'divider'
-}
-
-export const projectDetailsMsg = (project: SnykProjectMsgParts) => {
+export const projectInfoMsg = (project: SnykProjectMsgParts) => {
   let blocks: any[] = [];
 
-  const projectDetailsIntro = [
+  const projectInfoIntro = [
     {
       type: 'header',
       text: {
@@ -18,8 +14,8 @@ export const projectDetailsMsg = (project: SnykProjectMsgParts) => {
     },
   ];
 
-  blocks = blocks.concat(projectDetailsIntro);
-  blocks = blocks.concat(generateProjectDetailsBlocks(project));
+  blocks = blocks.concat(projectInfoIntro);
+  blocks = blocks.concat(generateProjectInfoBlocks(project));
 
   return {
     blocks,
@@ -30,15 +26,15 @@ export const projectDetailsMsg = (project: SnykProjectMsgParts) => {
 
 };
 
-const generateProjectDetailsBlocks = (project: SnykProjectMsgParts) => {
+const generateProjectInfoBlocks = (project: SnykProjectMsgParts) => {
 
-  console.log('We want details on this project: ', project);
+  // console.log('We want details on this project: ', project);
 
   const testDateConverted = new Date(project.lastTestDate);
   const testDate = testDateConverted.toDateString();
   const { critical, high, medium, low } = project.issuesCount;
 
-  const detailBlocks = [
+  const projectInfoBlocks = [
     {
       type: 'section',
       text: {
@@ -97,15 +93,19 @@ const generateProjectDetailsBlocks = (project: SnykProjectMsgParts) => {
             type: 'plain_text',
             text: 'View Issues',
             emoji: true
-          }
+          },
+          action_id: `get-project-issues`,
+          value: `project--${project.id}`
         },
         {
           type: 'button',
           text: {
             type: 'plain_text',
-            text: 'Do something else',
+            text: 'View Dependencies',
             emoji: true
-          }
+          },
+          action_id: `get-project-deps`,
+          value: `project--${project.id}`
         },
       ]
     }
@@ -148,8 +148,8 @@ const generateProjectDetailsBlocks = (project: SnykProjectMsgParts) => {
       ]
     };
 
-    detailBlocks[0].fields! = detailBlocks[0].fields!.concat(containerBlocks.fields);
+    projectInfoBlocks[0].fields! = projectInfoBlocks[0].fields!.concat(containerBlocks.fields);
   }
 
-  return detailBlocks;
+  return projectInfoBlocks;
 };

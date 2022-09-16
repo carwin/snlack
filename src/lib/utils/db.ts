@@ -1,7 +1,8 @@
 import { JSONFile, Low } from 'lowdb';
-import { dbPath } from '../../App';
-import { DB, DbTableEntry, DbInteractionFunc, SnykAuthData, SlackInstallData, SnlackUser } from '../../types';
+import { dbPath, state } from '../../App';
+import { DB, DbTableEntry, DbInteractionFunc, SnykAuthData, SlackInstallData, SnlackUser, SnykOrg, SnykProject } from '../../types';
 import { Installation } from '@slack/bolt';
+import { validate as validateUUID, v4 as uuidV4 } from 'uuid';
 
 // @TODO: There's quite a bit of cleaning up to do - I've been hacking my way through random ideas.
 
@@ -49,7 +50,7 @@ export const dbReadEntry: DbInteractionFunc = async ({ table, key, value }): Pro
 
   const dbData = await readFromDb();
 
-  console.log(dbData);
+  // console.log(dbData);
 
   // @ts-ignore
   if (dbData && dbData[table]) {
@@ -336,7 +337,7 @@ export const dbDeleteEntry: DbInteractionFunc = async ({ table, key, value }): P
             // @TODO: I don't understand why `boolean` isn't a valid function return type.
             lookupKey.split('.').reduce( (prev: any, curr: any): boolean | SnykAuthData | Installation | SnlackUser => {
               if (prev[curr] === value) {
-                console.log(`Found the requested entry: ${entry}. Deleting ${table}[${index}]`);
+                // console.log(`Found the requested entry: ${entry}. Deleting ${table}[${index}]`);
                 // @TODO: - when the hell would it be null if we're here?
                 // @ts-ignore
                 db.data[table].splice(index, 1);
@@ -362,6 +363,50 @@ export const dbDeleteEntry: DbInteractionFunc = async ({ table, key, value }): P
     console.log('There is no database data, we should be building a new DB.');
   }
 
+}
+
+
+export const getProjectIndexForEntry = async(project: string, userUid?: string) => {
+  const argIsProjectID = validateUUID(project);
+  const user = userUid || state.slackUid;
+  const entry: SnlackUser = await dbReadEntry({table: 'users', key: 'slackUid', value: user}) as SnlackUser;
+
+  const parentOrgIndex = await getProjectParentOrgIndexForEntry(project, user);
+
+  const matchFn = (p: SnykProject) => p.name === project || p.id === project;
+
+  return entry.snykOrgs![parentOrgIndex].projects.findIndex(matchFn);
+}
+
+/** Given a Project, return the array index for it's parent Org within an entry's `snykOrgs` array. */
+export const getProjectParentOrgIndexForEntry = async(project: string, userUid?: string) => {
+  console.log('parent org index for entry... project arg is: ', project);
+  const user = userUid || state.slackUid;
+  const entry: SnlackUser = await dbReadEntry({table: 'users', key: 'slackUid', value: user}) as SnlackUser;
+  const projMatchFn = (p: SnykProject) => p.id === project || p.name === project;
+
+  let parentOrgIndex: number = -1;
+
+  entry.snykOrgs?.map( (org, index) => {
+    if (parentOrgIndex === -1) {
+      const pIndex = org.projects.findIndex(projMatchFn);
+      console.log('pindex', pIndex);
+      if (pIndex > -1) parentOrgIndex = index;
+      console.log('returning it!', index);
+    }
+  });
+
+  console.log('parent org index: ', parentOrgIndex);
+  return parentOrgIndex;
+}
+
+export const getOrgIndexForEntry = async(org: string, userUid?: string) => {
+  const user = userUid || state.slackUid;
+  const entry: SnlackUser = await dbReadEntry({table: 'users', key: 'slackUid', value: user}) as SnlackUser;
+
+  const orgMatchFn = (o: SnykOrg) => o.id === org || o.name === org;
+
+  return entry?.snykOrgs?.findIndex(orgMatchFn);
 }
 
 /**

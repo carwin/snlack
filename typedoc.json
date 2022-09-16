@@ -1,5 +1,11 @@
 {
-    "$schema": "https://typedoc.org/schema.json",
-    "entryPoints": ["./src/App.ts", "./src/**/*.ts"],
-    "out": "./docs"
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/tsdoc/v0/tsdoc.schema.json",
+    "exclude": ["**/*+(index|.spec|.e2e).ts"],
+    "entryPoints": [
+        "./src/App.ts",
+        "./src/lib/actions/*.ts",
+        "./src/lib/commands/**/*.ts"
+    ],
+    "out": "./docs",
+    "entryPointStrategy": "expand"
 }

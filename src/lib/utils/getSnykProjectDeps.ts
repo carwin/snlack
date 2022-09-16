@@ -11,13 +11,15 @@ interface V1ApiOrg {
 
 
 // export const getSnykProjectDeps = async(slackCallerUid: string, orgId: string, projectId: string): Promise<unknown[]> => {
-export const getSnykProjectDeps = async(slackCallerUid: string, orgId: string, projectId: string): Promise<any> => {
+export const getSnykProjectDeps = async(slackCallerUid: string, orgId: string, projectId: string, perPage?: number, pageCur?: number): Promise<any> => {
   console.log('CALLED getSnykProjectDeps with projectId: ', projectId);
   const data = await dbReadEntry({table: 'users', key: 'slackUid', value: slackCallerUid }) as SnlackUser;
   if (!data || typeof data === 'undefined') return [];
   const userIndexMatch = (user: SnlackUser) => user.slackUid === slackCallerUid;
   const orgIndexMatch = (org: SnykOrg) => org.id === orgId;
   const projIndexMatch = (proj: SnykProject) => proj.id === projectId;
+
+  const fetchPage = (typeof pageCur === undefined) ? 0 : pageCur! + 1;
 
   // const userIndex: number = data.users.findIndex(userIndexMatch);
 
@@ -52,14 +54,20 @@ export const getSnykProjectDeps = async(slackCallerUid: string, orgId: string, p
         const postData = JSON.stringify(
           {
             "filters": {
-              "projects": [projectId]
-            }
+              "projects": [projectId],
+              // "severity": [
+              //   "high",
+              //   "critical",
+              //   "medium",
+              //   "low"
+              // ],
+            },
           }
         );
         // const requests = await callSnykApi2(snykAPIReqArgs)
         const depOutput = await callSnykApi2(snykAPIReqArgs)
           // .post(`/org/${orgId}/dependencies`, { "filters": { "projects": [ `"${projectId}"` ] } })
-          .post(`/org/${orgId}/dependencies`, postData)
+          .post(`/org/${orgId}/dependencies?sortBy=severity&page=${fetchPage}&perPage=${perPage || 10}`, postData)
           .then((deps) => deps.data.results)
           .catch( (error) => {
             console.log('callSnykApi from getSnykProjects() Promise has been rejected.');

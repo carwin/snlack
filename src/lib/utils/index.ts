@@ -9,3 +9,6 @@ export * from './getSnykProjects'
 export * from './slackMessageBlocks';
 export * from './state'
 export * from './createProjObj';
+export * from './createProjectDetailsBlock';
+export * from './getSnykOrgIdByName';
+export * from './getSnykOrgNameById';

@@ -1,124 +1,81 @@
-import { AllMiddlewareArgs, App as Slack, SlackCommandMiddlewareArgs } from '@slack/bolt';
+import { AllMiddlewareArgs, RespondFn, SlackCommandMiddlewareArgs, SlashCommand } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
-import { dbDeleteEntry } from '../utils';
-import { snykProjectHelpCommandHandler } from './snykProjectHelp';
-import { snykProjectIssuesCommandHandler } from './snykGetProjectIssues';
-import { snykListProjectsCommandHandler } from './snykListProjects';
-import { snykListOrgsCommandHandler } from './snykListOrgs';
-import { snykDependencyListCommandHandler } from './snykDeps';
 
-export interface CommandRegisterFn {
-  (slack: Slack): Promise<any>;
-}
+/**
+ * Defines a common structure for the handler functions used by instances of SnykCommand.
+ */
+export type CmdHandlerFn = (rawCommand: SlashCommand, respond: RespondFn, {subcmd, ...params}: {subcmd: string;}) => Promise<void>;
 
-export interface CommandHandlerFn {
-  (args: SlackCommandMiddlewareArgs & AllMiddlewareArgs<StringIndexed>): Promise<void>;
-}
+/**
+ * Used to instantiate the "cmds' that live under the parent `/slack` command.
+ *
+ * **Instances of this class are expected to be placed within the context of
+ *  Bolt's `slack.command('/snyk', etc...)`.**
+ *
+ * As a Slack "slash" command, this may be an atypical setup, but its designed
+ * to imitate a CLI application. The root command `/snyk` acts as the entrypoint
+ * (analagous to the application binary if we continue to think of this like a
+ * CLI app).
+ *
+ * The second word, which we'll call the "`cmd`" defines the context
+ * of the command.
+ *
+ * The word immediately following the `cmd` defines the action
+ * to be taken within the `cmd`'s context. We'll call this word the `subcmd`.
+ *
+ * The `cmd`s may take one or more arguments after the `subcmd`, we'll reference
+ * these within the command handlers as `params` using the `...` rest operator.
+ * Generally speaking, we're unlikely to have more than three params.
+ *
+ * @example
+ * ```
+ * slack.command('/snyk', async({ ack, respond, context, whatever }) => {
+ *   await ack();
+ *   // -> /snyk project help
+ *   new SnykCommand('project', 'help', myHandlerFn1, middlewareArgs);
+ *   // -> /snyk project list
+ *   new SnykCommand('project', 'list', myHandlerFn2, middlewareArgs);
+ *   // -> /snyk project delete SomeProject
+ *   new SnykCommand('project', 'delete', myHandlerFn3, middlewareArgs);
+ * });
+ * ```
+ *
+ * @category Commands
+ *
+ */
+export class SnykCommand {
+  /** Represents the context of the `/snyk` command.*/
+  readonly cmd: string;
+  /** Represents the action to be taken in the context of the `/snyk` command.*/
+  readonly subcmd: string;
+  /** The handler function to be called for the provided combination of `cmd` and `subcmd`. */
+  readonly cmdHandler: CmdHandlerFn;
 
-export interface CommandInterface {
-  command: string;
-  registerCommand: CommandRegisterFn;
-  commandHandler: CommandHandlerFn;
-}
-
-export class Command implements CommandInterface {
-  public command: string;
-
-  constructor(app: Slack) {
-    this.command = '';
-    this.registerCommand(app);
+  /**
+   * The constructor of the `SnykCommand` class.
+   *
+   * @param cmd the top-level context of this instance of the `/snyk` command.
+   * @param subcmd the action to be taken in the context of the `/snyk` command.
+   * @param cmdHandler handler function to be called for this SnykCommand.
+   */
+  constructor(cmd: string, subcmd: string, cmdHandler: CmdHandlerFn, args: SlackCommandMiddlewareArgs & AllMiddlewareArgs<StringIndexed>) {
+    this.cmdHandler = cmdHandler;
+    this.cmd = cmd;
+    this.subcmd = subcmd;
+    this.registerHandler(args);
   }
 
-  public registerCommand = async(app: Slack): Promise<void> => {
-    app.command(this.command, async(args) => {
-      this.commandHandler(args);
-    });
-  }
+  /**
+   * Calls the `cmdHandler` function passed to the constructor with the
+   * appropriate arguments.
+   */
+  private registerHandler = async (args: SlackCommandMiddlewareArgs & AllMiddlewareArgs<StringIndexed>): Promise<void> => {
+    const commandStringParts: string[] = args.command.text.split(' ');
 
-  public commandHandler = async (args: SlackCommandMiddlewareArgs & AllMiddlewareArgs<StringIndexed>): Promise<void> => {
-    await args.ack();
-  }
-
-}
-
-export class SnykCommand extends Command {
-  public command: string;
-
-  constructor(slack: Slack) {
-    super(slack);
-    this.command = '/snyk';
-    this.registerCommand(slack);
-  }
-
-  public commandHandler = async (args: SlackCommandMiddlewareArgs & AllMiddlewareArgs<StringIndexed>): Promise<void> => {
-    const {ack, command, respond} = args;
-    await ack();
-
-    console.log(`Handling the command ${this.command}`);
-
-    const cmd : string = command.text.split(/\s+/)[0];
-    const subcmd : string = command.text.split(/\s+/)[1];
-    const param : string = command.text.split(/\s+/)[2];
-    const param2 : string = command.text.split(/\s+/)[3];
-    const param3 : string = command.text.split(/\s+/)[4];
-
-    console.log();
-    console.log('Received a command:');
-    console.log('--------------------------');
-    console.log('cmd:', cmd);
-    console.log('cmd type:', typeof cmd);
-    console.log('subcmd:', subcmd);
-    console.log('param:', param);
-    console.log('param2:', param2);
-    console.log('param3:', param3);
-    console.log('--------------------------');
-    console.log();
-
-    const commandParts = {
-      cmd,
-      subcmd,
-      param,
-      param2,
-      param3
-    };
-
-    switch(cmd) {
-      case 'org':
-        this.orgHandler(subcmd);
-        if (subcmd === 'list') snykListOrgsCommandHandler(command, respond, commandParts);
-        break;
-      case 'app':
-        if (subcmd === 'del') {
-          await dbDeleteEntry({ table: 'users', key: 'slackUid', value: 'U03SNLU01JA' });
-        }
-        break;
-
-      case 'project':
-        if (typeof subcmd === 'undefined') snykProjectHelpCommandHandler(command, respond, commandParts);
-        if (subcmd === 'help') snykProjectHelpCommandHandler(command, respond, commandParts);
-        if (subcmd === 'list') snykListProjectsCommandHandler(command, respond, commandParts);
-        if (subcmd === 'issues') snykProjectIssuesCommandHandler(command, respond, commandParts);
-        break;
-
-      case 'dependencies' || 'deps':
-
-        if (typeof subcmd === 'undefined') break;
-        if (subcmd === 'help') break;
-        if (subcmd === 'list') snykDependencyListCommandHandler(command, respond, commandParts);
-        // if (subcmd === 'graph') snykDependencyGraphCommandHandler(command, respond, commandParts);
-        // if (subcmd === 'sbom') snykDependencySBOMCommandHandler(command, respond, commandParts);
-        break;
-
-      default:
-        await respond('You gotta gimme something');
-        break;
+    if (commandStringParts[0] === this.cmd && commandStringParts[1] === this.subcmd) {
+      const params = commandStringParts.slice(2, commandStringParts.length);
+      this.cmdHandler(args.command, args.respond, { subcmd: this.subcmd, ...params });
     }
-
-  }
-
-  private orgHandler = async (subcmd?: string) => {
-    // const snykOrgs = await getSnykAppOrgs('bearer', );
-    console.log('Gettin\' your orgs');
   }
 
 }

@@ -2,7 +2,7 @@ import { App as Slack, ExpressReceiver, Installation, LogLevel } from '@slack/bo
 import * as dotenv from 'dotenv';
 import type { Application } from 'express';
 import express from 'express';
-import expressSession, { Session } from 'express-session';
+import expressSession from 'express-session';
 import * as fs from 'fs';
 import type { Server } from 'http';
 import passport from 'passport';
@@ -13,17 +13,14 @@ import { SnlackUser } from './types';
 
 //local Imports
 import rateLimit from 'express-rate-limit';
-import { actionConfigSnyk } from './lib/actions';
-import { actionAuthSnyk } from './lib/actions/authSnyk';
-import { SnykCommand } from './lib/commands/snyk';
+import { actionAuthSnyk, actionConfigSnyk, actionGetProjDepSnippet, actionGetProjectDependencies, actionOrgDetailsProjDropdown, actionProjectListOverflow, actionRefreshProjects } from './lib/actions';
+import { snykCmdOrgHelp, snykCmdOrgInfo, snykCmdOrgList, snykCmdProjectHelp, snykCmdProjectInfo, snykCmdProjectList, SnykCommand, snykDependencyListCommandHandler } from './lib/commands';
 import { AppIndexController, SnykAuthCallbackController, SnykAuthController, SnykPreAuthController } from './lib/controllers';
 import { eventAppHomeOpened } from './lib/events/apphome/opened';
 import { requestError } from './lib/middleware';
 import { getSnykOAuth2, stateHandler, userState } from './lib/utils';
 import { fnEnter, fnError, fnExit } from "./lib/utils/consoleExtensions";
 import { Controller } from './types';
-import { actionProjectListOverflow } from './lib/actions/projectList';
-import { actionRefreshProjects } from './lib/actions/projectsRefresh';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -158,8 +155,23 @@ export class Snlack {
     actionAuthSnyk(slack);
     actionConfigSnyk(slack);
     actionProjectListOverflow(slack);
+    actionOrgDetailsProjDropdown(slack);
+    actionGetProjectDependencies(slack);
+    actionGetProjDepSnippet(slack);
+    // new SnykCommand(slack);
 
-    new SnykCommand(slack);
+    // new SnykCommand(slack, 'org', 'help', snykCmdOrgHelp);
+    // new SnykCommand(slack, 'org', 'list', snykCmdOrgList);
+    slack.command(/^\/snyk/, async(args) => {
+      args.ack();
+      new SnykCommand('org', 'help', snykCmdOrgHelp, args);
+      new SnykCommand('org', 'info', snykCmdOrgInfo, args);
+      new SnykCommand('org', 'list', snykCmdOrgList, args);
+      new SnykCommand('project', 'help', snykCmdProjectHelp, args);
+      new SnykCommand('project', 'list', snykCmdProjectList, args);
+      new SnykCommand('project', 'info', snykCmdProjectInfo, args);
+      new SnykCommand('dependencies', 'list', snykDependencyListCommandHandler, args)
+    })
 
     return slack;
   }

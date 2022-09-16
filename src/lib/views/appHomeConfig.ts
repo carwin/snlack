@@ -1,7 +1,12 @@
-import { state } from "../../App";
-import {stateHandler, userState } from '../utils';
-import { generateOrgItemProjectsSelectOptions } from "../commands/snykListOrgs";
-import { dbReadEntry, readFromDb } from "../utils";
+/**
+ * This action handles the view of the Slack application's Home when the user
+ * has already configured Snyk authentication.
+ *
+ * @category Views
+ * @group App
+ *
+ */
+import { readFromDb } from "../utils";
 
 export const appHomeConfigView = () => {
 
