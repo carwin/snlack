@@ -1,10 +1,9 @@
+/**
+ * @module SnykCommand
+ */
 import { AllMiddlewareArgs, RespondFn, SlackCommandMiddlewareArgs, SlashCommand } from '@slack/bolt';
 import { StringIndexed } from '@slack/bolt/dist/types/helpers';
-
-/**
- * Defines a common structure for the handler functions used by instances of SnykCommand.
- */
-export type CmdHandlerFn = (rawCommand: SlashCommand, respond: RespondFn, {subcmd, ...params}: {subcmd: string;}) => Promise<void>;
+import { CmdHandlerFn } from '../../types';
 
 /**
  * Used to instantiate the "cmds' that live under the parent `/slack` command.
@@ -40,7 +39,7 @@ export type CmdHandlerFn = (rawCommand: SlashCommand, respond: RespondFn, {subcm
  * });
  * ```
  *
- * @category Commands
+ * @group Commands
  *
  */
 export class SnykCommand {

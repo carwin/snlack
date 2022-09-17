@@ -1,42 +1,28 @@
-import { CmdHandlerFn } from "../snyk";
-import { SnlackUser, SnykCommandParts, SnykOrg } from '../../../types';
-import { validate as uuidValidate } from 'uuid';
-import { dbReadEntry } from "../../utils";
-import { orgInfoMsg } from "../../messages/cmds/org/orgInfoMsg";
+import { RespondArguments, SlackCommandMiddlewareArgs } from '@slack/bolt';
+import { SnykCommandParts } from '../../../types';
+import { getSnykOrgInfo } from '../../utils';
+import { CmdHandlerFn } from '../../../types';
 
-
-export const snykCmdOrgInfo: CmdHandlerFn = async(rawCommand, respond, {subcmd, ...params}: SnykCommandParts) => {
+/** Slack slash command handler function for `/snyk org info <MyOrg>` */
+export const snykCmdOrgInfo = async (args: SlackCommandMiddlewareArgs) => {
+  const rawCommandParts = args.command.text.split(' ');
+  const [cmd, subcmd, ...params] = rawCommandParts;
 
   // User wants info on an org but neglected to give us a name or UUID.
   if (subcmd === 'info' && typeof params[0] === 'undefined') {
-    await respond(`To get info on an organization you'll have to pass along the Org ID or name. See \`/snyk org help\` for more info.`);
+    await args.respond(`To get info on an organization you'll have to pass along the Org ID or name. See \`/snyk org help\` for more info.`);
   }
 
   if (subcmd === 'info' && typeof params[0] !== 'undefined') {
-    const orgParamIsUUID = uuidValidate(params[0]);
 
-    const userEntry: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: rawCommand.user_id }) as SnlackUser;
-
-    if (userEntry && typeof userEntry !== 'undefined') {
-      const orgIndexMatch = (org: SnykOrg) => orgParamIsUUID ? org.id === params[0] : org.name === params[0];
-
-      const orgIndex = userEntry.snykOrgs?.findIndex(orgIndexMatch);
-
-      if (typeof orgIndex !== 'undefined') {
-        const org = userEntry.snykOrgs![orgIndex];
-
-        // const msg = orgInfoMsg(org, rawCommand.user_id);
-        const msg = orgInfoMsg(org, orgIndex, userEntry);
-
-        await respond(msg);
-
-      }
-
+    try {
+      const response = await getSnykOrgInfo(params[0], args.command.user_id) as RespondArguments;
+      console.log('RESPONSE', response.blocks);
+      await args.respond(response);
     }
-    else {
-      await respond(`There are no Orgs attached to your user. Try authenticating with Snyk from the App's configuration page.`);
+    catch(error) {
+      await args.respond(`There was an issue fetching details for the Snyk organization: ${params[0]}.`);
+      console.error(`There was an error in snykCmdOrgInfo()...`, error);
     }
-
   }
-
 }

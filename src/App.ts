@@ -2,25 +2,22 @@ import { App as Slack, ExpressReceiver, Installation, LogLevel } from '@slack/bo
 import * as dotenv from 'dotenv';
 import type { Application } from 'express';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import expressSession from 'express-session';
 import * as fs from 'fs';
 import type { Server } from 'http';
 import passport from 'passport';
 import path, { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import * as db from './lib/utils/db';
-import { SnlackUser } from './types';
-
-//local Imports
-import rateLimit from 'express-rate-limit';
-import { actionAuthSnyk, actionConfigSnyk, actionGetProjDepSnippet, actionGetProjectDependencies, actionOrgDetailsProjDropdown, actionProjectListOverflow, actionRefreshProjects } from './lib/actions';
-import { snykCmdOrgHelp, snykCmdOrgInfo, snykCmdOrgList, snykCmdProjectHelp, snykCmdProjectInfo, snykCmdProjectList, SnykCommand, snykDependencyListCommandHandler } from './lib/commands';
+import { actionAuthSnyk, actionConfigSnyk, actionGetProjDepSnippet, actionGetProjectDependencies, actionOrgDetailsProjDropdown, actionOrgMoreInfo, actionProjectListOverflow, actionRefreshOrgs, actionRefreshProjects } from './lib/actions';
+import { snykCmdOrgHelp, snykCmdOrgInfo, snykCmdOrgList, snykCmdProjectHelp, snykCmdProjectInfo, snykCmdProjectList,  snykProjectDepsCommandHandler } from './lib/commands';
+import { SnykCommand3030 } from './lib/commands/snykCommand2';
 import { AppIndexController, SnykAuthCallbackController, SnykAuthController, SnykPreAuthController } from './lib/controllers';
 import { eventAppHomeOpened } from './lib/events/apphome/opened';
 import { requestError } from './lib/middleware';
 import { getSnykOAuth2, stateHandler, userState } from './lib/utils';
-import { fnEnter, fnError, fnExit } from "./lib/utils/consoleExtensions";
-import { Controller } from './types';
+import * as db from './lib/utils/db';
+import { Controller, SnlackUser } from './types';
 
 // Tell the App where to look for .env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -34,22 +31,6 @@ const slackClientSecret = process.env.SLACK_CLIENT_SECRET;
 // const slackSocketToken = process.env.SLACK_SOCKET_TOKEN;
 export const SNYK_API_BASE = 'https://api.snyk.io';
 export const SNYK_APP_BASE = 'https://app.snyk.io';
-
-// Extend console.
-// ------------------------------------------------------------------------------
-// @TODO - Put this elsewhere.
-Object.defineProperties(console, {
-  enter: {
-    value: fnEnter
-  },
-  leave: {
-    value: fnExit
-  },
-  problem: {
-    value: fnError
-  }
-});
-
 
 // Define scopes.
 // ------------------------------------------------------------------------------
@@ -81,9 +62,14 @@ export const state = new Proxy(userState, stateHandler);
 /**
  * The primary entrypoint / basis for the application.
  *
+ * @remarks
+ * This would do better as a singleton.
+ *
  * @category root
  * */
 export class Snlack {
+  /** There can only be one. Singleton. */
+  private static instance: Snlack | null = null;
   /** A public Express.js app instance. */
   public expressApp: Application;
   /** A public Bolt app instance. */
@@ -158,20 +144,25 @@ export class Snlack {
     actionOrgDetailsProjDropdown(slack);
     actionGetProjectDependencies(slack);
     actionGetProjDepSnippet(slack);
+    actionRefreshOrgs(slack);
+    actionOrgMoreInfo(slack);
     // new SnykCommand(slack);
 
     // new SnykCommand(slack, 'org', 'help', snykCmdOrgHelp);
     // new SnykCommand(slack, 'org', 'list', snykCmdOrgList);
-    slack.command(/^\/snyk/, async(args) => {
-      args.ack();
-      new SnykCommand('org', 'help', snykCmdOrgHelp, args);
-      new SnykCommand('org', 'info', snykCmdOrgInfo, args);
-      new SnykCommand('org', 'list', snykCmdOrgList, args);
-      new SnykCommand('project', 'help', snykCmdProjectHelp, args);
-      new SnykCommand('project', 'list', snykCmdProjectList, args);
-      new SnykCommand('project', 'info', snykCmdProjectInfo, args);
-      new SnykCommand('dependencies', 'list', snykDependencyListCommandHandler, args)
-    })
+    //////// slack.command(/^\/snyk/, async(args) => {
+    ////////   args.ack();
+    ////////   new SnykCommand('org', 'help', snykCmdOrgHelp, args);
+    ////////   new SnykCommand('org', 'info', snykCmdOrgInfo, args);
+    ////////   new SnykCommand('org', 'list', snykCmdOrgList, args);
+    ////////   new SnykCommand('project', 'help', snykCmdProjectHelp, args);
+    ////////   new SnykCommand('project', 'list', snykCmdProjectList, args);
+    ////////   new SnykCommand('project', 'info', snykCmdProjectInfo, args);
+    ////////   new SnykCommand('project', 'deps', snykProjectDepsCommandHandler, args);
+    ////////   new SnykCommand('project', 'dependencies', snykProjectDepsCommandHandler, args);
+    ////////   // new SnykCommand('dependencies', 'list', snykDependencyListCommandHandler, args)
+    //////// })
+
 
     return slack;
   }
@@ -271,7 +262,7 @@ export class Snlack {
             throw new Error(`Failed fetching installation: ${error}`);
           }
         },
-        // takes in an installQuery as an argument
+        // Takes in an `installQuery` as an argument
         // installQuery = {teamId: 'string', enterpriseId: 'string', userId: 'string', conversationId: 'string', isEnterpriseInstall: boolean};
         // returns nothing
         // @TODO
@@ -296,17 +287,12 @@ export class Snlack {
 
   private initRoutes(controllers: Controller[]) {
 
-    // controllers.push();
-
     controllers.forEach((controller: Controller) => {
       // @TODO - hmm....
       this.expressApp.use('/', controller.router);
     })
 
-
-
   }
-
 
   private listen = async(port: number) => {
     const runPort: number = port || parseInt(process.env.Port as string) || 3000;
@@ -315,23 +301,9 @@ export class Snlack {
   }
 
   private initGlobalMiddleware() {
-    // this.app.use('/slack/events', this.receiver.router);
-
     this.expressApp.use(express.json());
     this.expressApp.use(express.urlencoded({ extended: true }));
-    // this.app.use('/public', express.static(path.join(__dirname, '/public')));
     this.expressApp.use(expressSession({ secret: uuidv4(), resave: false, saveUninitialized: true }));
-    // this.app.use(
-    //   helmet({
-    //     contentSecurityPolicy: {
-    //       directives: {
-    //         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-    //         'script-src': ["'self'", "'unsafe-inline'"], // Required for onclick inline handlers
-    //         'script-src-attr': ["'self'", "'unsafe-inline'"], // Required for onclick inline handlers
-    //       },
-    //     },
-    //   }),
-    // );
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 5 minutes
       max: 100, // limit each IP to 100 requests per windowMs
@@ -362,17 +334,47 @@ export class Snlack {
 
   };
 
+  public static getInstance = (): Snlack => {
+    if (!Snlack.instance) {
+      console.log(`Instantiating Snlack...`);
+      Snlack.instance = new Snlack([
+        new AppIndexController(),
+        new SnykAuthController(),
+        new SnykPreAuthController(),
+        // @ts-ignore
+        new SnykAuthCallbackController(this.app, this.expressApp),
+      ], parseInt(process.env.PORT));
+    } else {
+      console.log('Returning the existing Snlack instance');
+    }
+
+    return Snlack.instance;
+  }
+
 }
 
 // Create a new App instance.
 // ------------------------------------------------------------------------------
-new Snlack([
-  new AppIndexController(),
-  new SnykAuthController(),
-  new SnykPreAuthController(),
-  // @ts-ignore
-  new SnykAuthCallbackController(this.app, this.expressApp),
-], parseInt(process.env.PORT));
+export default Snlack.getInstance();
+
+const mySnlack = Snlack.getInstance();
+// @ts-ignore
+console.log('My snlack is different!?', mySnlack.initialized);
+const SC = SnykCommand3030.getInstance();
+SC.addCmd('org help', snykCmdOrgHelp);
+SC.addCmd('org list', snykCmdOrgList);
+SC.addCmd('org info', snykCmdOrgInfo);
+// SnykCommand.addCmd('org info', snykCmdOrgInfo);
+// SnykCommand.addCmd('org list', snykCmdOrgList);
+
+//////////// new Snlack([
+////////////   new AppIndexController(),
+////////////   new SnykAuthController(),
+////////////   new SnykPreAuthController(),
+////////////   // @ts-ignore
+////////////   new SnykAuthCallbackController(this.app, this.expressApp),
+//////////// ], parseInt(process.env.PORT));
+
 
 // Initialize our persistent JSON file store / pseudo-database.
 // We should do something else in production.
