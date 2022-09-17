@@ -3,9 +3,6 @@ import { SnykProject, SnykProjectMsgParts } from '../../../../types';
 import { createProjObj } from '../../../utils';
 
 export const projectListMsg = ({projects, org, orgId, orgEntryIndex}: {projects: SnykProject[], org: string, orgId: string | boolean, orgEntryIndex: number}) => {
-// export const projectListMsg = (projects: SnykProject[], org: string, orgId: string | boolean, orgEntryIndex: number) => {
-  console.enter(`Entering projectListMsg()...`);
-  console.problem(`counting projects... ${projects.length}`);
 
   // Initialize the blocks array for the returned message.
   let blocks: any[] = [];
@@ -15,7 +12,6 @@ export const projectListMsg = ({projects, org, orgId, orgEntryIndex}: {projects:
 
   // Put together the blocks for each project.
   projects.map((project, index) => {
-    console.log('looping projects... round ', index);
     if (project.org === org) {
       const projObj = createProjObj(project);
       const listItemBlocks = generateListItemMsgBlock(projObj, orgEntryIndex, index);
@@ -23,7 +19,6 @@ export const projectListMsg = ({projects, org, orgId, orgEntryIndex}: {projects:
     }
   });
 
-  console.log('ORG ID: ', orgId);
   if (typeof orgId === 'boolean') {
     throw 'Org ID was a boolean while building a message. That is not good.';
   }
@@ -89,14 +84,6 @@ export const generateListItemMsgBlock = (project: SnykProjectMsgParts, orgIndexI
               text: 'Get more details about this project.'
             }
           },
-          {
-            text: {
-              type: 'plain_text',
-              text: 'Issue count',
-              emoji: true
-            },
-            value: 'proj-list-issue-count'
-          }
         ],
         action_id: 'project_list_overflow_action'
       }
@@ -122,6 +109,13 @@ export const projListIntroBlocks = ({sentiment, org}: {sentiment: 'positive' | '
 
   return [
     {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: `Project List: ${org}`
+      }
+    },
+    {
       type: 'section',
       text: {
         type: 'mrkdwn',
@@ -140,8 +134,6 @@ export const projListFinaleBlocks = ({ sentiment, orgId}: {sentiment: 'positive'
   // Outtro statements for the project list message.
   const projListOuttroStatementPositive = `Don't see the project you're looking for? Try the button below to manually refresh data from Snyk.`;
   const projListOuttroStatementNegative = `This App keeps a local list of Snyk projects to avoid interacting with the Snyk API too often. You can trigger a refresh of the requested Org's project data using the button below.`
-
-  console.log('projListFinaleBlocks() !!! Org ID: ', orgId);
 
   return [
     {

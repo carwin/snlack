@@ -5,9 +5,7 @@ import { SlackHomeView } from '../../views/appHome';
 export const eventAppHomeOpened: SnlackEvent = (slack: Slack): void => {
     slack.event('app_home_opened', async ({ event, client, context }) => {
       console.log(`@${event.user} opened the Home tab`);
-      // console.log('There might be context:', context);
       try {
-        // const homeView: HomeView = await createHome({user: event.user});
         const slackAppHome: SlackHomeView = new SlackHomeView({user: event.user});
         const view = await slackAppHome.createHome({});
         await client.views.publish(view);

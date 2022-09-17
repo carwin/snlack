@@ -1,12 +1,11 @@
 import { App as Slack, RespondArguments } from '@slack/bolt';
-import { createProjectDetailsBlock } from '../utils/createProjectDetailsBlock';
+import { createProjectDetailsBlock } from '../utils';
 
 /** A Slack action handler for the project dropdown in `/snyk org info` response messages. */
 export const actionOrgDetailsProjDropdown = (slack: Slack) => {
 
-  slack.action('org_details-proj-dropdown', async({ ack, body, respond, payload }) => {
+  slack.action('org-details-proj-dropdown', async({ ack, body, respond, payload }) => {
     await ack();
-    console.enter('Entering actionOrgDetailsProjDropdown()...');
     if (payload.type === 'static_select') {
 
       const parts: any = splitOptionValueString(payload.selected_option.value)

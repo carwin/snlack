@@ -3,6 +3,7 @@ import { SnlackUser, SnykOrg } from "../../../../types";
 
 /** Returns the `RespondArguments` for the `/snyk org info` commands response. */
 export const orgInfoMsg = (org: SnykOrg, orgIndex: number, userEntry: SnlackUser): RespondArguments => {
+  console.log('org info msg');
   return {
     replace_original: false,
     delete_original: false,
@@ -12,6 +13,10 @@ export const orgInfoMsg = (org: SnykOrg, orgIndex: number, userEntry: SnlackUser
 
 /** Returns the message blocks for the Org info message. */
 const orgInfoMsgBlocks = (org: SnykOrg, orgIndex: number, userEntry: SnlackUser): (Block | KnownBlock)[] => {
+  console.log('org info msg blocks');
+  console.log('-- org -- ', org);
+  console.log('-- orgIndex -- ', orgIndex);
+  console.log('-- userentry --', userEntry.snykOrgs);
 
   const blocks = [
     {
@@ -38,7 +43,7 @@ const orgInfoMsgBlocks = (org: SnykOrg, orgIndex: number, userEntry: SnlackUser)
           emoji: false
         },
         options: generateOrgItemProjectsSelectOptions(org, orgIndex, userEntry),
-        action_id: 'org_details-proj-dropdown',
+        action_id: 'org-details-proj-dropdown',
       }
     },
     {

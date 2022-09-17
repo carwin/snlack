@@ -1,26 +1,21 @@
-/**
- * @module snykCmdProjectList
- */
 import { RespondArguments, RespondFn, SlashCommand } from '@slack/bolt';
 import { validate as uuidValidate } from 'uuid';
 import { SnlackUser, SnykCommandParts, SnykOrg, SnykProject } from '../../../types';
 import { projectListAllMsg, projectListMsg } from '../../messages';
 import { dbReadEntry, getSnykOrgIdByName, getSnykOrgNameById } from '../../utils';
-import { CmdHandlerFn } from '../snyk';
-
+import { CmdHandlerFn } from '../../../types';
 
 /**
  * Command handler for `/snyk project list <etc...>`
  *
- * @category Commands
+ * @group Commands
  */
-export const snykCmdProjectList: CmdHandlerFn = async(rawCommand: SlashCommand, respond: RespondFn, { subcmd, ...params}: SnykCommandParts): Promise<void> => {
+export const snykCmdProjectList: CmdHandlerFn = async(rawCommand, respond, { subcmd, ...params}: SnykCommandParts): Promise<void> => {
 
   // ---------------------------------------------------------------------------
   // List all projects, regardless of Org.
   // ---------------------------------------------------------------------------
   if (typeof params[0] === 'undefined' || params[0] === 'All') {
-    console.enter(`Parms[0] is undefined or the string 'All'...`)
     let projectCollection: SnykProject[] = [];
     const existingUserEntry: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: rawCommand.user_id }) as SnlackUser;
 
@@ -53,13 +48,9 @@ export const snykCmdProjectList: CmdHandlerFn = async(rawCommand: SlashCommand, 
   // @TODO - Type gates are too strong in places. Users should still get a response when they pass an Org name that doesn't exist.
   else if (typeof params[0] !== 'undefined') {
 
-    console.enter(`Params[0] is not empty, I hope its an Org`);
-
     // Use uuid validation to determine whether or not the user passed an Org ID
     // as the parameter, or an Org name string.
     const isUUID = uuidValidate(params[0]);
-
-    console.log('Valid UUID?: ', isUUID);
 
     // Everything within this scope relies, more or less, on having a Snyk
     // organization ID, which we'll retrieve by parsing the name value (given to
@@ -67,7 +58,6 @@ export const snykCmdProjectList: CmdHandlerFn = async(rawCommand: SlashCommand, 
     // const orgId: string = await getSnykOrgIdByName(rawCommand.user_id, params[0]) as string;
     const orgId = isUUID ? params[0] : await getSnykOrgIdByName(rawCommand.user_id, params[0]) as string;
 
-    console.log(`The org ID we'll use is: ${orgId}`)
     // If there's no orgId, log a note to the console and respond to the user.
     if (!orgId) {
       const orgNotFoundMsg = `A Snyk organization matching *${params[0]}* could not be found. Are you certain it exists and that you have access to it?`;
@@ -99,17 +89,9 @@ export const snykCmdProjectList: CmdHandlerFn = async(rawCommand: SlashCommand, 
           // SnykOrg object
           const orgNameMatch = (org: SnykOrg) => org.name === params[0].toString();
           const orgIdMatch = (org: SnykOrg) => {
-            console.log('THE ORG: ', org.id);
-            console.log('THE PARAM: ', params[0]);
-            console.log('match~!!???', org.id === params[0]);
-            console.log('match~!!???', org.id === params[0].toString());
-            console.log('match~!!???', org.id.toString() === params[0].toString());
-
             return org.id === params[0].toString();
           }
           let desiredOrgIndex: undefined | number;
-
-          console.log('okay, why not? ---- ', existingEntry.snykOrgs.findIndex(orgIdMatch));
 
           // Look for the SnykOrgs array index that matches the org the user has
           // requested via `param`.
@@ -124,7 +106,6 @@ export const snykCmdProjectList: CmdHandlerFn = async(rawCommand: SlashCommand, 
           // await dbWriteEntry({ table: 'users', data: existingEntry });
 
           // Only continue if the desiredOrgIndex has been found.
-          console.log('typeof index', typeof desiredOrgIndex);
           if (typeof desiredOrgIndex === 'number') {
             // Send the message to the user.  The message should contain
             // the list of projects in the given Snyk org or a statement

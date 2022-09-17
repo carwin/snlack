@@ -2,9 +2,10 @@
 import { SnlackUser, SnykOrg, SnykProject } from '../../../../types';
 import { createProjObj, dbReadEntry, generateListItemMsgBlocks, projListFinaleBlocks, projListIntroBlocks } from '../../../utils';
 
+/**
+ * Message: List all projects
+ */
 export const projectListAllMsg = async (projects: SnykProject[], slackUid: string) => {
-  console.enter(`Entering projectListAllMsg()...`);
-  console.problem(`counting projects... ${projects.length}`);
 
   const existingData: SnlackUser = await dbReadEntry({ table: 'users', key: 'slackUid', value: slackUid }) as SnlackUser;
 
@@ -15,7 +16,6 @@ export const projectListAllMsg = async (projects: SnykProject[], slackUid: strin
 
   // Put together the blocks for each project.
   projects.map((project) => {
-    console.log('We have a match for - ', project.name);
     const projObj = createProjObj(project);
 
     // If there's no existing entry for this user or if the user's entry has no
@@ -61,11 +61,8 @@ export const projectListAllMsg = async (projects: SnykProject[], slackUid: strin
     blocks = blocks.concat(projListFinaleBlocks({sentiment:'negative', orgId: 'All'}));
   }
 
-  console.log(`Here are the blocks we'll be sending back: ${blocks}`);
-
   // Handle the message limit which we are likely to hit with large organizations:
   const blocksString = blocks.toString();
-  console.log('blocks length', blocks.length);
   if (blocksString.length >= 39000 || blocks.length >= 45) {
 
     const tooManyBlocksBlocks = [

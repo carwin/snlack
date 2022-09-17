@@ -1,9 +1,7 @@
-import { CmdHandlerFn } from '../snyk';
-import { SnykCommandParts } from '../../../types';
-import { dbReadEntry, getProjectIndexForEntry, getProjectParentOrgIndexForEntry } from '../../utils';
-import { createProjectDetailsBlock } from '../../utils/createProjectDetailsBlock';
-import { validate as validateUUID } from 'uuid';
 import { RespondArguments } from '@slack/bolt';
+import { SnykCommandParts } from '../../../types';
+import { createProjectDetailsBlock, getProjectIndexForEntry, getProjectParentOrgIndexForEntry } from '../../utils';
+import { CmdHandlerFn } from '../../../types';
 
 /** Command handler for `/snyk project info`. Returns a set of detail blocks. */
 export const snykCmdProjectInfo: CmdHandlerFn = async(rawCommand, respond, {subcmd, ...params}: SnykCommandParts): Promise<void> => {

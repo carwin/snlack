@@ -3,10 +3,26 @@ import { v4 as uuid4 } from 'uuid';
 import { readFromDb, getDbEntryIndex } from '../utils';
 import { appSettingsFormBlocks } from './appHomeConfig';
 
-// Updates the contents of the Home tab.
-// We can use this for modifying the details / content presented to users based
-// on contexts like whether or not they've authorized with Snyk.
-
+/**
+ * SlackHomeView
+ *
+ * @remarks
+ * > Why did I make this into a class?
+ *
+ * Updates the contents of the Home tab.
+ * We can use this for modifying the details / content presented to users based
+ * on contexts like whether or not they've authorized with Snyk.
+ *
+ * @example
+ * ```
+ * slack.event('app_home_opened', async({ event, client, context }) => {
+ *   ...
+ *   const slackAppHome: SlackHomeView = new SlackHomeView({user: event.user});
+ *   const view = await slackAppHome.createHome({});
+ *   ...
+ * });
+ * ```
+ */
 export class SlackHomeView implements HomeView {
   public type: 'home';
   public blocks;
@@ -78,7 +94,6 @@ export class SlackHomeView implements HomeView {
       console.error(`There was an error creating the App's Home view: ${error}`);
       throw error;
     } finally {
-      console.leave('Leaving createHome()...');
     }
     // return userView;
   };

@@ -1,17 +1,16 @@
 /**
  * @module snykCmdProjectHelp
  */
-import { RespondArguments, RespondFn, SlashCommand } from "@slack/bolt";
-import { SnykCommandParts } from '../../../types';
+import { RespondArguments } from "@slack/bolt";
+import { CmdHandlerFn, SnykCommandParts } from '../../../types';
 import { projectHelpMsg } from '../../messages';
-import { CmdHandlerFn } from "../snyk";
 
 /**
  * Command handler for `/snyk project help`
  *
  * @category Commands
  */
-export const snykCmdProjectHelp: CmdHandlerFn = async(rawCommand: SlashCommand, respond: RespondFn, { subcmd, ...params}: SnykCommandParts): Promise<void> => {
+export const snykCmdProjectHelp: CmdHandlerFn = async(rawCommand, respond, { subcmd, ...params}: SnykCommandParts): Promise<void> => {
   const msg: RespondArguments = projectHelpMsg();
   await respond(msg);
 }

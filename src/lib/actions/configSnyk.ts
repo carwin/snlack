@@ -5,15 +5,15 @@ import { AppHomeConfigViewSnykModal } from '../views';
 /**
  * Handles the `config_snyk` action.
  *
+ * @remarks
  * This action is triggered when a user clicks a particular button on the App's
  * Home view.
  *
- * @see snykPreAuthController()'s remarks for more info.
+ * @see {@link snykPreAuthController}
  **/
 // @TODO: Figure out how to link the @see statement in the typedoc comment.
 export const actionConfigSnyk = (slack: Slack) => {
   slack.action('config_snyk', async ({ ack, body, client }) => {
-    console.enter('Entering actionConfigSnyk()...');
 
     // Acknowledge the reception of payload.
     await ack();
@@ -41,7 +41,7 @@ export const actionConfigSnyk = (slack: Slack) => {
       console.error('Error in actionConfigSnyk()', error);
       throw error;
     } finally {
-      console.leave(`Leaving actionConfigSnyk()...`);
+      console.log(`Leaving actionConfigSnyk()...`);
     }
   });
 }

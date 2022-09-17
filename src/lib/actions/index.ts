@@ -5,3 +5,5 @@ export * from './projectList'
 export * from './projectsRefresh'
 export * from './getProjectDependencies';
 export * from './getProjDepSnippet';
+export * from './orgMoreInfo';
+export * from './orgsRefresh';

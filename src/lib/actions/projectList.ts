@@ -1,6 +1,6 @@
 import { App as Slack, RespondArguments } from '@slack/bolt';
 import { state } from '../../App';
-import { createProjectDetailsBlock } from '../utils/createProjectDetailsBlock';
+import { createProjectDetailsBlock } from '../utils';
 
 /**
  * Handles the interaction of the overflow menu on project list items.

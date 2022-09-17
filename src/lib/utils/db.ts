@@ -41,16 +41,7 @@ function buildNewDb(): DB {
  * });
  * ```*/
 export const dbReadEntry: DbInteractionFunc = async ({ table, key, value }): Promise<void | boolean> => {
-  console.enter(`Entering dbReadEntry()...\n - \n Database read lookup triggered on ${table}\n Looking for '${value}' on '${key}'`);
-  // console.log(`Database read lookup triggered on ${table}`);
-  // console.log(`Looking for '${value}' on '${key}'...`);
-  // const adapter = new JSONFile<DB>(dbPath);
-  // const db = new Low<DB>(adapter);
-  // await db.read();
-
   const dbData = await readFromDb();
-
-  // console.log(dbData);
 
   // @ts-ignore
   if (dbData && dbData[table]) {
@@ -149,7 +140,6 @@ export const dbReadNestedEntry: DbInteractionFunc = async ({ table, nestedTable,
 }
 
 export const dbWriteEntry: DbInteractionFunc = async ({ table, data, index }): Promise<void> => {
-  console.enter('Entering dbWriteEntry()...');
   if (typeof data === 'undefined') throw 'A valid data object is required when calling dbWriteEntry().';
   try {
     const existingData = await readFromDb();
@@ -213,7 +203,6 @@ export const dbWriteEntry: DbInteractionFunc = async ({ table, data, index }): P
  *
  * */
 export const dbWriteSlackInstallEntries = async (userEntry: SnlackUser, installEntry: Installation) => {
-  console.enter('Entering dbWriteSlackInstallEntries()...');
   const userEntryExists = await dbReadEntry({table: 'users', key: 'slackUid', value: userEntry.slackUid});
   console.log(userEntryExists);
   const installEntryExists = await dbReadEntry({table: 'slackAppInstalls', key: 'userId', value: userEntry.slackUid});
@@ -250,7 +239,6 @@ export const dbWriteSlackInstallEntries = async (userEntry: SnlackUser, installE
   }
 
   db.data = existingData;
-  console.leave('Leaving dbWriteSlackInstallEntries()...');
   return db.write();
 
 }
@@ -259,7 +247,6 @@ export const dbWriteSlackInstallEntries = async (userEntry: SnlackUser, installE
  * Looks up an entry and returns its index in the lowdb array it exists in.
  **/
 export const getDbEntryIndex: DbInteractionFunc = async({ table, key, value }): Promise<number | void> => {
-  console.enter(`Entering getDbEntryIndex()...\n\n Finding entry where ${key} === ${value}`);
 
   if (key === undefined) return;
   let matchedIndex: number | undefined;
@@ -287,19 +274,13 @@ export const getDbEntryIndex: DbInteractionFunc = async({ table, key, value }): 
 
   } catch (error) {
     console.error(`Error getting DB entry index: ${error}`);
-    throw error;
   }
-  // else {
-  //   console.log(`Error was with key ${key} and value ${value} on table ${table}`);
-  //   throw new Error(`Either the provided table doesn't exist in the current DB or the provided key/value are undefined.`);
-  // }
 
   console.log(`Before returning getDbEntryIndex had this matchedIndex: ${matchedIndex}`);
   console.log(`Matched index type = ${typeof matchedIndex}`);
   if (typeof matchedIndex !== 'undefined') {
     return matchedIndex;
   }
-  // return matchedIndex;
 }
 
 /**
@@ -312,13 +293,9 @@ export const getDbEntryIndex: DbInteractionFunc = async({ table, key, value }): 
  **/
 export const dbDeleteEntry: DbInteractionFunc = async ({ table, key, value }): Promise<void> => {
   // @TODO: Made a mess here with db / dbData.
-  console.enter('Entering DbInteractionFunc()...');
-  console.log(`Database read lookup triggered on ${table}`);
-  console.log(`Looking for '${value}' on '${key}'...`);
   const dbData = await readFromDb();
   const adapter = new JSONFile<DB>(dbPath);
   const db = new Low(adapter);
-  // await db.read();
 
   if (dbData && dbData[table]) {
     if (typeof key !== 'undefined' && typeof value !== 'undefined') {

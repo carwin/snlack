@@ -1,11 +1,17 @@
 {
-    "$schema": "https://developer.microsoft.com/en-us/json-schemas/tsdoc/v0/tsdoc.schema.json",
+    "$schema": "https://typedoc.org/schema.json",
+    "name": "Snlack - The Unofficial Snyk App for Slack",
     "exclude": ["**/*+(index|.spec|.e2e).ts"],
-    "entryPoints": [
-        "./src/App.ts",
-        "./src/lib/actions/*.ts",
-        "./src/lib/commands/**/*.ts"
-    ],
+    "gitRevision": "master",
+    "gitRemote": "origin",
+    "hideGenerator": true,
+    "entryPoints": ["./src"],
+    "entryPointStrategy": "Expand",
+    "darkHighlightTheme": "dark-plus",
+    "sort": ["static-first", "source-order"],
+    "plugin": ["typedoc-theme-hierarchy"],
+    "categorizeByGroup": false,
     "out": "./docs",
-    "entryPointStrategy": "expand"
+    "externalPattern": "lib/**/*.ts",
+    "theme": "hierarchy"
 }

@@ -22,11 +22,11 @@ import { state } from '../../App';
  * authorize.
  *
  * A better overview of the issue:
- *
+ * ```
  *   Slack -> abcd.ngrok.io/snyk/auth -> app.snyk.io/oauth2/authorize = FAILURE
  *   Slack -> localhost:<PORT>/snyk/auth -> app.snyk.io/oauth2/authorize = FAILURE
  *   Slack -> localhost:<PORT>/snyk/preauth -> localhost:<PORT>/snyk/auth -> app.snyk.io/oauth2/authorize = SUCCESS
- *
+ * ```
  * ## About slackUid...
  *
  * Somehow the Axios interceptors need to access the Slack user ID of the
@@ -48,19 +48,17 @@ import { state } from '../../App';
 export class SnykPreAuthController implements Controller {
   public path = '/snyk/preauth';
   public router = Router();
-  // private app: Snlack;
+  /** @inheritdoc */
   constructor() {
-    console.enter('Entering SnykPreAuthController.constructor()...');
     this.initRoutes();
   }
 
+  /** @inheritdoc */
   private initRoutes() {
     this.router.get(`${this.path}`, this.preAuthHandler);
   }
 
   private preAuthHandler(req: Request, res: Response, next: NextFunction) {
-
-    console.leave('Leaving SnykPreAuthController.preAuthHandler()...\n Redirecting to /auth.');
     res.redirect(`/snyk/auth`);
     next();
   }

@@ -1,7 +1,6 @@
-import {App as Slack} from '@slack/bolt';
-import { dbReadEntry, getProjectParentOrgIndexForEntry } from '../utils';
+import { App as Slack } from '@slack/bolt';
 import { SnlackUser, SnykDependency } from '../../types';
-import { getSnykProjectDeps } from '../utils/getSnykProjectDeps';
+import { dbReadEntry, getProjectParentOrgIndexForEntry, getSnykProjectDeps } from '../utils';
 
 export const actionGetProjDepSnippet = async(slack: Slack) => {
   slack.action('get-proj-dep-snippet', async({ ack, client, payload, body }) => {

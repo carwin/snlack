@@ -7,7 +7,6 @@ import { state } from '../../App';
 
 export const actionRefreshProjects = async (slack: Slack) => {
   slack.action('projects_refresh', async({ ack, payload, body, respond }) => {
-    console.enter('Entering actionRefreshProjects()...');
     await ack();
     state.changeUser(body.user.id);
 

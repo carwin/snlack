@@ -1,8 +1,7 @@
 import { App as Slack } from '@slack/bolt';
 import { SnlackUser, SnykProject } from '../../types';
 import { projectDepsMsg } from '../messages';
-import { dbReadEntry, getProjectIndexForEntry, getProjectParentOrgIndexForEntry } from '../utils';
-import { getSnykProjectDeps } from '../utils/getSnykProjectDeps';
+import { dbReadEntry, getProjectIndexForEntry, getProjectParentOrgIndexForEntry, getSnykProjectDeps } from '../utils';
 
 /** Action handler for returning a Project's dependencies as a message. */
 export const actionGetProjectDependencies = (slack: Slack) => {
