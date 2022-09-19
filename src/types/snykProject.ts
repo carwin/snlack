@@ -27,4 +27,14 @@ export interface SnykProject {
   targetReference: string;
   tags: SnykTag[];
   attributes: SnykProjectAttributes;
+  issues: SnykIssue[];
+}
+
+export interface SnykIssue {
+  id: string;
+  issueType: string;
+  cwe: string[];
+  title: string;
+  severity: string;
+  ignored: boolean;
 }
