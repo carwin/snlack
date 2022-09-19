@@ -20,12 +20,12 @@ export const projectListMsg = ({projects, org, orgId, orgEntryIndex}: {projects:
   });
 
   if (typeof orgId === 'boolean') {
-    throw 'Org ID was a boolean while building a message. That is not good.';
+    console.error('Org ID was a boolean while building a message. That is not good.');
   }
 
   // If there is at least one project to return, construct the response
   // using positive intro/outro dialog and the list of projects.
-  if (projectBlocks.length >= 1) {
+  if (projectBlocks.length >= 1 && typeof orgId !== 'boolean') {
     // Add the positive intro block(s) to the message.
     blocks = blocks.concat(projListIntroBlocks({sentiment: 'positive', org }));
     // Add the blocks for each project to the message.
@@ -36,7 +36,7 @@ export const projectListMsg = ({projects, org, orgId, orgEntryIndex}: {projects:
 
   // If there are no projects to return, construct the response using negative
   // intro/outro dialog.
-  else {
+  else if (typeof orgId !== 'boolean'){
     // Add the negative intro block(s) to the message.
     blocks = blocks.concat(projListIntroBlocks({sentiment: 'negative', org}));
     // Add the finale.
