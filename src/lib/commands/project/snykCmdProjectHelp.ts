@@ -1,7 +1,7 @@
 /**
  * @module snykCmdProjectHelp
  */
-import { RespondArguments } from "@slack/bolt";
+import { RespondArguments, SlackCommandMiddlewareArgs } from "@slack/bolt";
 import { CmdHandlerFn, SnykCommandParts } from '../../../types';
 import { projectHelpMsg } from '../../messages';
 
@@ -10,7 +10,7 @@ import { projectHelpMsg } from '../../messages';
  *
  * @category Commands
  */
-export const snykCmdProjectHelp: CmdHandlerFn = async(rawCommand, respond, { subcmd, ...params}: SnykCommandParts): Promise<void> => {
+export const snykCmdProjectHelp = async (args: SlackCommandMiddlewareArgs) => {
   const msg: RespondArguments = projectHelpMsg();
-  await respond(msg);
+  await args.respond(msg);
 }
