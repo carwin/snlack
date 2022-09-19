@@ -1,7 +1,5 @@
 import { RespondArguments, SlackCommandMiddlewareArgs } from '@slack/bolt';
-import { SnykCommandParts } from '../../../types';
 import { getSnykOrgInfo } from '../../utils';
-import { CmdHandlerFn } from '../../../types';
 
 /** Slack slash command handler function for `/snyk org info <MyOrg>` */
 export const snykCmdOrgInfo = async (args: SlackCommandMiddlewareArgs) => {
