@@ -10,8 +10,7 @@
     "docs": "npx typedoc --out docs ./src/**/*.ts",
     "format": "prettier --write 'src/**/*.ts'",
     "ts:exports:glob": "./scripts/exportGlob.sh actions controllers exceptions middleware utils views types",
-    "start": "npm run build && node dist/App.js",
-    "start2": "npm run build && node dist/app2.js"
+    "start": "node dist/App.js"
   },
   "license": "MIT",
   "dependencies": {
