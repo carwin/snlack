@@ -40,8 +40,10 @@ export class SlackHomeView implements HomeView {
     console.log('Updating Home view...');
     let blocks: any[] = this.homeBlocksPreSnyk(this.user);
     if (snykAuth === true) {
-      // blocks = this.homeBlocksPostSnyk(this.user).concat(appSettingsFormBlocks as []);
-      blocks = appSettingsFormBlocks.concat(this.homeBlocksPostSnyk(this.user) as []);
+      // !!!!!!!!!!!!!!!!
+      // @TODO - This view isn't ready for the world, we're going to ignore it for MVP.
+      // !!!!!!!!!!!!!!!!
+      // blocks = appSettingsFormBlocks.concat(this.homeBlocksPostSnyk(this.user) as []);
     }
 
     return {
@@ -104,7 +106,7 @@ export class SlackHomeView implements HomeView {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `Welcome <@${user}>!, this is the home of the unofficial Snyk`
+          text: `Welcome <@${user}>!, this is the home of the unofficial Snyk App for Slack.\n\nThis app serves primarily as a demonstration of what is possible for developers utilizing the <https://docs.snyk.io/snyk-apps|Snyk Apps> platform to develop integrations. Though much of what you may find here is meant as an example, there is still plenty of useful functionality.\n`
         }
       },
       {
@@ -122,7 +124,7 @@ export class SlackHomeView implements HomeView {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `Click the button below to begin configuring the Snyk integration.`
+          text: `Before you'll be able to interact with this application, you'll need to authorize this App to communicate with your Snyk account. This authorization is one of the cornerstones of the Snyk Apps design paradigm and its built on top of the OAuth2 specification (much like the Slack authentication process you went through).`
         }
       },
       {

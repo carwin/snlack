@@ -46,7 +46,7 @@ export class AppHomeConfigViewSnykModal {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `Before you can leverage this app's Slack commands or interact with the bot, you'll need to authorize the app with Snyk to allow it to access your data.\n\n Click the button below to get started.`
+          text: `After you've clicked the button below, you'll be redirected to Snyk.io to authorize this app. Once there, select the Snyk Organization(s) you'd like to allow this application to interact with.\n\nOnce the authorization is complete, head back here and test the waters by sending \`/snyk org list\` in any public channel.\n\n_If you ever run into issues, you can come back here and run through the authorization process again - if your issue was caused by an expired authorization token, this process should fix it_ :thumbsup:`
         }
       },
       {
@@ -62,7 +62,8 @@ export class AppHomeConfigViewSnykModal {
             value: `${user}`,
             url: `http://localhost:3000/snyk/preauth?slackUserId=${user}`,
             // url: `http://localhost:3000/snyk/auth?suid=${user}`,
-            action_id: 'auth_snyk'
+            action_id: 'auth_snyk',
+            style: 'primary'
           }
         ]
       },
@@ -70,9 +71,8 @@ export class AppHomeConfigViewSnykModal {
         type: 'context',
         elements: [
           {
-            type: 'plain_text',
-            text: `This application leverages the Snyk Apps platform and Snyk's REST API.`,
-            emoji: true
+            type: 'mrkdwn',
+            text: `_*For developers*: You can learn more about Snyk Apps by visiting <https://docs.snyk.io/snyk-apps|Snyk's documentation page>!_`,
           }
         ]
       },
