@@ -10,7 +10,7 @@ import passport from 'passport';
 import path, { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { actionAuthSnyk, actionConfigSnyk, actionGetProjDepSnippet, actionGetProjectDependencies, actionOrgDetailsProjDropdown, actionOrgMoreInfo, actionProjectListOverflow, actionRefreshOrgs, actionRefreshProjects } from './lib/actions';
-import { snykCmdOrgHelp, snykCmdOrgInfo, snykCmdOrgList, snykCmdProjectHelp, snykCmdProjectInfo, snykCmdProjectList,  snykProjectDepsCommandHandler } from './lib/commands';
+import { snykCmdOrgHelp, snykCmdOrgInfo, snykCmdOrgList, snykCmdProjectDeps, snykCmdProjectHelp, snykCmdProjectInfo, snykCmdProjectList, snykCmdProjectListIssues } from './lib/commands';
 import { SnykCommand3030 } from './lib/commands/snykCommand2';
 import { AppIndexController, SnykAuthCallbackController, SnykAuthController, SnykPreAuthController } from './lib/controllers';
 import { eventAppHomeOpened } from './lib/events/apphome/opened';
@@ -150,6 +150,7 @@ export class Snlack {
 
     // new SnykCommand(slack, 'org', 'help', snykCmdOrgHelp);
     // new SnykCommand(slack, 'org', 'list', snykCmdOrgList);
+    //////// These are being refactored, See the bottom of this file....
     //////// slack.command(/^\/snyk/, async(args) => {
     ////////   args.ack();
     ////////   new SnykCommand('org', 'help', snykCmdOrgHelp, args);
@@ -358,15 +359,19 @@ export class Snlack {
 export default Snlack.getInstance();
 
 const mySnlack = Snlack.getInstance();
+
 // @ts-ignore
-console.log('My snlack is different!?', mySnlack.initialized);
 const SC = SnykCommand3030.getInstance();
 SC.addCmd('org help', snykCmdOrgHelp);
 SC.addCmd('org list', snykCmdOrgList);
 SC.addCmd('org info', snykCmdOrgInfo);
-// SnykCommand.addCmd('org info', snykCmdOrgInfo);
-// SnykCommand.addCmd('org list', snykCmdOrgList);
+SC.addCmd('project list', snykCmdProjectList);
+SC.addCmd('project info', snykCmdProjectInfo);
+SC.addCmd('project help', snykCmdProjectHelp);
+SC.addCmd('project deps', snykCmdProjectDeps)
+SC.addCmd('project issues', snykCmdProjectListIssues);
 
+// An older iteration of Snlack instantiation for posterity.
 //////////// new Snlack([
 ////////////   new AppIndexController(),
 ////////////   new SnykAuthController(),
