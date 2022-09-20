@@ -1,0 +1,51 @@
+{
+    "name": "Snlack To-Go",
+    "description": "A self-hosted instance of Snlack, the unofficial Snyk app for Slack!",
+    "repository": "https://github.com/carwin/snlack",
+    "logo": "https://user-images.githubusercontent.com/715967/191147173-5ca4b1b6-a07e-4873-866b-2d4fbb3b15dd.png",
+    "keywords": ["snyk", "slack", "app"],
+    "success_url": "/slack/install",
+    "env": {
+        "SLACK_BOT_TOKEN": {
+            "description": "Bot token from Slack.",
+            "required": true
+        },
+        "SLACK_CLIENT_ID": {
+            "description": "Your Slack app's Client ID.",
+            "required": true
+        },
+        "SLACK_CLIENT_SECRET": {
+            "description": "Your Slack app's Client Secret.",
+            "required": true
+        },
+        "SLACK_OAUTH_REDIRECT_URI": {
+            "description": "The remote URL to which users will be redirected after going through Slack's OAuth app install process. It needs to end with `/slack/oauth_redirect`.",
+            "required": true
+        },
+        "SLACK_SIGNING_SECRET": {
+            "description": "Signing Secret provided by Slack in your App's config settings",
+            "required": true
+        },
+        "SNYK_CLIENT_ID": {
+            "description": "The Client ID provided by Snyk during the Snyk Apps registration process.",
+            "required": true
+        },
+        "SNYK_CLIENT_SECRET": {
+            "description": "The Client Secret provided by Snyk during the Snyk Apps registration process.",
+            "required": true
+        },
+        "SNYK_ENCRYPTION_SECRET": {
+            "description": "A very secret value used to encrtyp locally stored data.",
+            "required": true
+        },
+        "SNYK_REDIRECT_URI": {
+            "description": "This value should match the one which was passed to Snyk during the Snyk Apps registration process.",
+            "required": true
+        },
+        "SNYK_SCOPES": {
+            "description": "The list of scopes the application requires users to provide for it to function.",
+            "required": true,
+            "value": "org.read,org.project.read"
+        }
+    }
+}
