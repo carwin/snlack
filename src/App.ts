@@ -185,6 +185,7 @@ export class Snlack {
         };
       },
       // redirectUri: 'https://972c-47-213-163-190.ngrok.io/slack/oauth_redirect',
+      redirectUri: process.env.SLACK_OAUTH_REDIRECT_URI,
       installerOptions: {
         // If below is true, /slack/install redirects installers to the Slack authorize URL
         // without rendering the web page with "Add to Slack" button.
