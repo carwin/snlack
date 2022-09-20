@@ -254,7 +254,7 @@ export class Snlack {
               const entry: Installation = await db.dbReadEntry({ table: 'slackAppInstalls', key: 'team.id', value: installQuery.teamId }) as Installation;
               // sessionStorage.setItem('slackInstallUserId', entry.user.id);
               // console.log('session storage?', sessionStorage.getItem('slackInstallUserId'));
-              state.changeUser(entry.user.id);
+              // state.changeUser(entry.user.id);
               return entry;
 
             }
