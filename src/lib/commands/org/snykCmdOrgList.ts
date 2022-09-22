@@ -21,7 +21,7 @@ export const snykCmdOrgList = async(args: SlackCommandMiddlewareArgs): Promise<v
       // I must be too tired to understand why the compiler thinks this might be
       // undefined inside this condition...
       // @ts-ignore
-      if (typeof userEntry !== 'undefined' && userEntry.snykOrgs.length >= -1) {
+      if (typeof userEntry !== 'undefined' && userEntry?.snykOrgs?.length >= -1) {
         // There is a snykOrgs key...
         let blocks = snykOrgListIntroBlocks();
         blocks = blocks
