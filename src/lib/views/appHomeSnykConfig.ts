@@ -60,7 +60,7 @@ export class AppHomeConfigViewSnykModal {
               emoji: true
             },
             value: `${user}`,
-            url: `http://localhost:3000/snyk/preauth?slackUserId=${user}`,
+            url: `${process.env.SNYK_REDIRECT_URI}/snyk/preauth?slackUserId=${user}`,
             // url: `http://localhost:3000/snyk/auth?suid=${user}`,
             action_id: 'auth_snyk',
             style: 'primary'
