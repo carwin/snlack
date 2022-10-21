@@ -1,8 +1,5 @@
 <p align="bottom">
 <img align="left" src="https://user-images.githubusercontent.com/715967/191147173-5ca4b1b6-a07e-4873-866b-2d4fbb3b15dd.png" />
-<a href="https://heroku.com/deploy">
-  <img align="right" src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy">
-</a>
 </p>
 
 # Snlack!
