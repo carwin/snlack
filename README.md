@@ -23,6 +23,6 @@ If you're interested in contributing or just generally seeing where this might g
 
 ## Usage
 
-You'll need to run / host this yourself if you want to make use of it. There's a handy Heroku deployment link at the top of this file.
+You'll need to run / host this yourself if you want to make use of it.
 
 **...More instructions coming soon.**
